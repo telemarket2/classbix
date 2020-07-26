@@ -1,0 +1,1 @@
+<p class="view_more"><a href="<?php echo $url; ?>" class="button block outline"><?php echo __('View more'); ?>  <i class="fa fa-arrow-right" aria-hidden="true"></i></a></p>

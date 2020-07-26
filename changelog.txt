@@ -1,0 +1,421 @@
+TODO: 	
+	- [later] dropzone fallback style update, prevent css blinkling
+	- then apply theme styles to admin css by overwriting them. use single css if possible 
+	- remove unused data from fulltextindex like soundex string
+	-* session cookie time set in admin
+	- contact with admin in interface chat
+	- block account with explanation and contact option
+	- block ad with explanation and contact option
+	- use window.localStorage to store each ad data for 1 day, load not existing data if related ads appeared anywhere on page 
+	********************
+
+	- add notification before paid listing expires or featured listing expires, normal listing expires
+	- add database backup
+	- add image to page
+	- Add 2co and moneybookers for indian payment 
+	- Add custom fields to users, define user fields, ability, subscriptions.
+	
+	+ Add deleting ads by user and keeping in db for records. then delete those ads after a month, 
+			year, or certain days automatically, or never delete them. 
+		add manual clear functionality maybe.
+		http://classibase.com/forums/topic/ad-deletion-question
+		- need to add versioning to keep old data because user can update ad with 1 character text and move to trash. admin will see only deleted item in last condition and not previous version with actual data.
+	
+	- add customization to listing subcategories, sub locations maybe in pages. can be using shortcodes everyware
+	- display user ads by location and category 
+	- add functionality to custom fields make them required, default value etc.
+	- add options to item: 				
+		- # of free updates 
+		- price for update, 
+		- if paid option to auto update next 2-3 days.. 
+	- add stats for ad view and external link clicks, phone call clicks	
+	- add social login http://hybridauth.sourceforge.net/
+	- auto custom field from parent category name. make: Toyota, model: Camry
+	
+	- bulk edit ads. useful for creating new category 
+	- add reminder for verifying ad, also show other ads that are pending for verification. 
+	- set resend verification email after x days option. Add some text explaining junk mail, adding email to trusted etc. 
+		also link for resending verification
+		can be link with bulk verification because maybe 5-10 ads added and need to verify with one link.
+	- offer to renew or edit existing ad if new ad similar to existing ad text by 90%
+
+
+	- Disable category and location editing, allow for admin and mods. http://classibase.com/forums/topic/category-and-location-editing/
+	- when flexible SSL used in cloudflare dynamic js loaded through http:// make it to use relative path instead of defining protocol in js. same goes to images used in custom css.
+	- Add option to prefer IP address detection variable	
+	- Prevent changeing category and location when editing ads by owners. 
+	- on 404 page or not visible to regular user page for ad display related ads if exists 
+	- allow to select first image 
+	- allow to rotate any image 
+	- auto crop black or similar pixels from image edges
+	- add multicurrency
+	- make dropdown default empty and set as required to custom field. to prevent 3 room apartment to be listed as 1 room 	
+	- send email when ad expired to renew listing with quick link	
+	- if added new dropdown then old records will not use it. how to show them in drilldown? 
+	- make flag images protocol independent //	
+	- widgets load over ajax to save processing and load over internet
+
+
+Version: 2.0.6(2020.04.29) 
+	+ Fixed language problem on login page
+Version: 2.0.5(2020.04.29) 
+	+ Added rewording/translation to english language
+	+ Added max duplicate word matches parameter to duplicate finder
+	+ Added noindex, follow for paginated listing pages
+	+ Added related ads search using words in given ad. Used for finding duplicates.
+	+ Added feature to separate consecutive items by same user. This prevents ad flooding and domination by active users.
+	+ Added new post throttling: "Post count" reached in "Post period" will be limited for "Post limit period".
+	+ Added feature to prevent posting if there "n" items in moderation. Number can be set in settings.
+	+ Added feature to hold for moderation if found similarity 90% with any item. Percentage can be set in settings.
+	+ Added separate cache cleaning buttons for image and data caches.
+	+ Fixed updating map checkbox in admin panel settings
+	+ Fixed 2 period option appeared in ads widget for popular ads
+	+ Fixed if custom field set to empty on some category then category selection would not work properly
+	+ Fixed dropdown positioning in mail template settings
+	+ Fixed RSS related to category, user pages
+	+ Updated PWA cache clearing structure to clean all client cache every 30 days. 
+	+ Optimized count by custom field to use estimate instead of counting in database. 
+	+ Optimized search for long queries. Now searches with more than 5 words will be much faster.
+	+ Set max 50, min 3 characters for search term
+	+ Removed non vital slow processes from clean db action. Queries removing null records for example.
+	+ Removed top user login info from admin 
+	+ Converted breadcrumb and product schema to JSON-LD format, need to update themes to latest version. This will fix errors in google webmaster tool. They changed to schema breadcrumbs in April 6, 2020. https://developers.google.com/search/docs/data-types/breadcrumb
+	
+
+Version: 2.0.4(2019.10.13) 
+	+ Fixed related items limited to running items when using cached values
+	+ gallery image reload
+	+ Removed delete functionality from ad edit page. Users can only mark items as completed. 
+	+ Fixed bug phone number field was always required, now respects option saved in settings. 
+	+ Brought back select multiple/all items for bulk actions. Previously was not available since version 2. All selects only visible items in related group.
+	+ Items per page for ads on admin panel can be selected from 20 to 500. Use it with caution because your browser or server may struggle displaying or performing bulk action with 500 items.  
+	+ Fixed web accessibility issues related to icon button titles, color contrast ratio, form input label. Accessibility score raised from 62 to 90 according to google lighthouse.
+
+Version: 2.0.3(2019.10.02)
+	+ Fixed user delete (bug appeared in version 2.0.2)
+	+ Added previous and next buttons on moderation page
+	+ Added skipping trash, duplicate and banned items when counting pending verification and showing abuse reports on admin dashboard. 
+	+ Fixed infinite redirect loop when search term is less than 3 characters.
+
+Version: 2.0.1(2019.09.21)
+	+ Admin and user panel redesigned to give better user experience on mobile devices
+	+ Converted all HTML select boxes to mobile friendly dropdown
+	+ Nested categories and locations better shown on new dropdown (same as select box).  
+	+ Custom fields populated dynamic with javascript when adding new item, editing existing item, using custom search form on front end
+	+ Lazy load images. 
+	+ Lazy resize thumbnails. Resizes each image with separate request.
+	+ Added duplicate finder. Checks item title and description text for similarity. Has options to search duplicates with percentage, number of matched words, number of differences.
+	+ Added prevention for double entry. Happens with double form submission caused by interrupted internet connection. Prevents by checking with recent items similarity 100%.
+	+ Fuzzy search with caching results. Finds matches even when search term is mistyped. Item title prioritized on search results. 
+	+ PWA (Progressive Web App) support with offline mode added, can enable PWA in settings. 
+	+ Phone number validation added, regex can be added in settings.
+	+ Added more statues types to items. Completed, duplicate, banned, trash, incomplete. All items can be set after some period go to trash and after some period trashed items can be deleted completely from database. 
+	+ Send approved notification email in background in batches. Faster page loads and combined content sending.
+	+ Session storage now handled in cookie. No more slow server site file sessions.
+	+ Mew moderation page, groups pending approval items by user and shows their recent items and count of items by different statuses (banned, expired, duplicate, trash etc..)
+	+ Uses karma for auto approving new items if set so in settings. Karma is calculated using user items counts by status. If user have some duplicate or banned items their karma will not be greater than 50%; Good to hold rule breakers for manual moderation. 
+	+ removed __autoloar function as it is deprecated and there is no way using it without error in php7.3
+	+ Fixed dir_cache error after installation process.
+	+ Related ads cached for 30 days, generation query is optimized
+	+ Time taking queries and periodic maintenance runs moved to ajax requests
+	+ Removed "ad", "ads" words from URL, because some pages content ware blocked by adblockers built into most mobile and desktop browsers. 
+	+ Fixed bugs related to version 2 ('home' link error. Location and category select box errors when posting ad. )
+	+ Replaced colorbox modal with tingle
+	+ Replaced carouFredSel with sly.js slider for new theme versions
+
+Version: 1.9.2 (2018.10.15)	
+	+ Added unique by user, location,category to ads widget 
+	+ Added defining custom date formatting to settings
+	+ Added escape for some characters in spam filter check	
+
+Version: 1.9.1 (2018.05.05)	
+	+ Fixed tabs bug in theme customizer
+	+ Fixed bug when importing images to ads using XML (http://classibase.com/forums/topic/import-ads-template-error/#post-7134)
+	+ Drill down custom fields only if has more than 10 results in current listing
+
+Version: 1.9 (2018.04.25)
+	+ Added images multiupload and client side resizing with dropzone.js
+	+ Related posts prefer posts with photo
+	+ Fixed import in locations bug with empty location names
+	+ Fixed update db when adding new key hits to ads table 
+	+ Fixed redirect url query sting to show ads pending moderation, and redirect to url with current 
+	+ Added chain select to ad edit page
+	+ Added custom field drill down to category widget
+	+ Combined frontend and backend js into one file and minified
+	+ Combined dropzone and colorbox css into main css and minified to reduce size and number of requests to web server
+
+Version: 1.8 (2018.03.05)	
+	+ Added HTTPS support with option to select preferred protocol
+	+ Count and display ad page views. Counting using ajax requests.
+	+ Added popular ads widget grouped by item posted date. Added most viewed ads list to admin and user panels.
+	+ Added invisible recaptcha and recaptcha2
+	+ Added support for nginx rewrite rules similar to wordpress
+	+ Added webp conversion to jpeg, previously webp images named as jpg were not resizing and showing black image
+	+ Added option to remove sticky location data stored in cookie
+	+ Added feature to renew ads, which moves ads to the top as if they are newly added
+	+ Added option to not list empty categories and locations in widget 
+	+ Show cookie and javascript requirement on login and posting pages. It is common on iphones when user try to login but cookies are disabled they can't login and don't see any error messages.
+	+ Rephrased and updated suspend(pause), approve(unpause), verify(only if email is matching user email) buttons for users. 
+	+ Added ad grouping by status (pending approval, expired, paused) for user panel
+	+ Hide edit link for logged in users viewing other users ads on frontend
+	+ Group sending ad approval notification emails to same user
+	+ Fixed database inserts with no default value errors. 
+
+	
+Version: 1.7.8 (2015.04.17)
+	+ Security fix for ads that are not related to any user
+	+ Removed sharing with Addthis, as this functionality should be used in widgets wna by any sharing provider. Addthis loads too much javascript. 
+	+ Search location, category names as well and users maybe and show as simple list first 5 results as link. when searched for cars show cars category link (update themes)
+    + Updated gallery colorbox styling to make mobile friendly
+    + Compress ad images, convert png to jpg for compression
+    + Upload to temp folder then resize and move to adpics folder
+	+ Generate random names for ad images for fixing browser cache issues
+	+ Added fixing empty image names. Checks once on update to this version.
+
+Version: 1.7.7 (2014.09.17)
+	+ Increased number of links in sitemap.xml from 500 to 3000, added caching.
+	+ Made page meta description compatible with older themes
+
+Version: 1.7.6 (2014.09.11)
+	+ Fixed hidden itemproperty value in Schema with empty string
+	+ Added image thumb and gallery to ad listings in admin panel
+	+ Updated directory deletion function to delete hidden files as well when clearing cache 
+	+ Fixed string double escaping
+	+ Added option to change from dropdown and radio custom field type to checkbox
+	+ Added QR code to ad page
+	+ Added support to import ads with checkbox custom fields
+	+ Set upload per image limit in admin panel
+	+ Changed "my ads" to "my account" which makes script for wider use
+	+ Fixed cookies for language switch
+	+ Moved post add button to general admin panel, separate from themes (update theme files)
+	+ Added wide layout support for some themes 
+	+ Checked themes for small fonts in page and input fields. increase font size for forms in themes, also border box model for select boxes
+	+ Add related ads widget by default to ad page on install
+	+ Convert all email addresses to lowercase before saving for consistency	
+	+ Store user logo in big size and resize when needed
+	
+Version: 1.7.5 (2014.06.03)
+	+ Fixed bug related to extending ads
+	 
+Version: 1.7.4 (2014.05.31)
+	+ Fixed bug processing paypal payment.
+	+ Replaced comma (,) multivalue seperator in urls with url safe dash (-) charachter
+
+Version: 1.7.3 (2014.05.08)
+	+ Added noindex meta tag on empty category pages 
+	+ Fixed custom search permalink bug related to some dropdowns that were processed like range field
+	+ Removed ereg() usage from code as it is deprecated from PHP version 5.3
+	+ Storing language data in cookie for loading website in last used language.
+
+Version: 1.7.2 (2014.04.29)
+	+ Do not store 0 values in database because it takes space and slows queries
+	+ Changed custom field links on user page to list ads from all users. This is because most users will have very few ads.
+	+ Added sanitization to search values, checks if such custom field value defined for checkbox, radio and dropdown custom fields.
+	+ Reset related ads on ad update, because ad may change category or location on update.
+	+ Added search variables to RSS, now RSS will list ads from current search results.
+
+Version: 1.7.1 (2014.04.24)
+	+ Fixed bug with search permalinks
+
+Version: 1.7 (2014.04.24)
+	+ Made related ads more relevant
+	+ Made search links url friendly	
+	+ Added cross links for custom fields with type dropdown and radio
+	+ Fixed user rss generation 
+	+ Fixed database table data type for category_id and location_id
+
+Version: 1.6 (2014.04.19)
+	+ Added category auto unlocking if no enabled sub categories
+	+ Added RSS for currently active user, location and category
+	+ Added widget to display RSS feeds in front end
+	+ Updated search widget: added simple search with customizable location and category options
+	+ Added search with image option
+	+ Added search per custom number of days 1,7,30,90 365 days
+	+ Fixed schema.org microdata: Added availability, priceCurrency in ISO 4217 format, SKU for each product, used itemlist on category and user pages, used single product on item page, fixed breadcrumb representation
+	+ Removed date from pages 
+	+ Fixed verification email user->id as reported
+	+ Added feature to display custom fields on ad listings if it is not displayed in separate column
+	+ Added option to modify ad extending periods
+	+ Added option to make images and phone fields required	
+
+Version: 1.5 (2014.03.02)
+	+ Added chain select for locations and categories when posting new ad. Requires theme update
+	+ Fixed page permalink generation for non latin characters
+
+Version: 1.4.8 (2014.01.28)
+	+ Fixed email message text when account upgraded or denied for dealer account
+
+Version: 1.4.7 (2014.01.27)
+	+ Fixed video proportional resize and colorbox issues.
+	+ Added recently viewed ads listing to Ads widget
+
+Version: 1.4.6 (2014.01.20)
+	+ Added youtube video custom field.
+	+ Added users widget to display latest or popular users 
+	+ Added delete user and delete user with all ads button to edit user page.
+	+ Fixed currency symbol positioning bug, was not displaying before number.
+	+ Updated price custom value storage method. Now you can have decimal point values in price like 12.30$ for example.
+
+Version: 1.4.5 (2013.10.24)
+	+ Associate ads to user on verification by admin 
+	+ Added currency to paypal payments (EUR, GBP etc.)
+	+ Added currency formatting $500 , 500$ to settings
+	+ Fixed unfeaturing previously featured ads
+	+ Minor bug fixes
+	+ Added option to disabling extending ads by users. Available options anable extending all ads, disable extending paid ads, disable extending all ads
+	+ Added option to set aoutodelete expired ads period, to keep database clean. Set -1 if you do not want to delete expired ads.
+	+ Added display ads with image in Ads widget
+	+ Optimized selecting featured ads related to active category and location in Ads widget
+
+Version: 1.4.4 (2013.09.23)
+	+ Fixed web widget http:// prefixing for empty strings
+	+ Added options to display dealer info on ad page and on listing pages if there is no ad image (Edwin Lee)
+	+ Added option to disable ad count if user has more than 50,000 category x location pair. Script uses 42 MB (takes 5.3 secons on each page) for ad count and 8MB for the rest of page, which is not acceptable. Made this option automatic for category x location > 50k.
+	+ Added notification for admin if there are pending approval ads or pending approval users, dealers
+	+ Setting reply to email address when contact form used. Users will reply directly to person who contacted them when they click reply from email client or phone.
+	+ Added messages when user account approved to inform user.
+	+ Added language switch to login pages in case users get email with login link in other language. 
+	+ Added relating old ads by registered user's email address. So they can register and manage their old ads in case they are not related.
+	+ Added custom variable to page description to render all locations and all categories.
+	+ Added gallery widget to display ad thumbnails.
+	+ Added carousel widget to animate ad thumbnails.
+	+ Added favicon and apple application icons. Upload icon from Settings -> General page.
+	+ Added category name retrieval functions by id
+	+ Added method to format prev/next item button 
+
+Version: 1.4.3 (2013.09.03)
+	+ Fixed "Token expired" error on new user registration
+	+ Fixed charset problem wen sending email for non Latin characters.
+
+Version: 1.4.2 (2013.08.30)
+	+ Fixed setting default language bug
+	+ Added address infowindow to google maps marker with ad title. 
+	+ Added option for choosing available contact by email options and default value (requires theme update)
+	+ Added disable commercial request checkbox setting (requires theme update)
+	+ Added disable agreement checkbox (requires theme update)
+	+ Added option to list ads without category. Updated "Ads" widget to include "View more" link for listing ads. Useful if website do not have any category.
+	+ Fixed displaying custom search on location page and hiding category select box if no category exists. 
+
+Version: 1.4.1 (2013.08.23)
+	+ Fixed bug when location selected for all categories should load custom field all loc-> all cats
+
+Version: 1.4 (2013.08.20)
+	+ Added google map as custom field, store address as text and display on map on ad item page. can enter google maps API key for sites with big traffic
+	+ Added option to disable captcha for logged in users (requires update old themes)
+	+ Added option to use recaptcha as alternative (requires update old themes)
+	+ Added option disable captcha completely (requires update old themes)
+	+ Added url and email custom fields
+	+ Added option view contact details to logged in users  (requires theme update)
+	+ Added un-mark featured ad in admin panel
+	+ Added option to start over update process in case of unexpected error
+	+ Check folder for write permission when updating
+	+ Added functionality to keep existing language translation on script update
+
+Version: 1.3.6 (2013.07.30)
+	+ Fixed user activation detecting 
+	+ Fixed missing prices in simple ad listing widget
+	+ Fixed editing custom checkbox field, previously was not saving. 
+	+ Switched to PHPMailer for sending mails, fixed issue using gmail as smtp server
+
+Version: 1.3.5 (2013.05.23)
+	+ Fixed user activation process
+	+ Prevented auto complete when adding new user from admin panel
+	+ Updated translation terms related to email verification
+
+Version: 1.3.4 (2013.05.21)
+	+ Fixed appending all custom fields to ad with type.
+	+ Fixed page title double escaping special characters
+	+ Updated category and location tree functions to include links
+	+ Added price to simple listing
+	+ Fixed custom styles with and without php.
+	+ Fixed contact us from page redirect
+	+ Added contact form submission limit to prevent spam
+	+ Added invalid login attempt limit to prevent brute force login attacks
+	+ Added backup for translation terms to set old value if available
+
+Version: 1.3.3 (2013.04.24)
+	+ Permalink  can be set from default location/category to category/location option
+	+ Updated permalink generation, made slug index unique
+	+ Updated Breadcrumb rendering function, added home icon customization
+	+ passing ads with ads widget for further customization, like displaying price etc.
+	+ Added custom controller, model, initialize script for themes
+
+Version: 1.3.2 (2013.04.15)
+	+ Added custom css to all theme customization as default option
+	+ Added RSS styling for better styling in chrome
+	+ Fixed ad counting query	
+Version: 1.3.1 (2013.04.06)
+	+ Added minimum version check for themes
+	+ Moved related ads to widget
+Version: 1.3 (2013.04.02)
+	+ Display ad count by category and location on widgets
+	+ Added all listings for category and location widgets using dynamic minimal display mode
+	+ Added related checkbox for category and location widgets to display child locations for currently active location
+	+ Auto format urls inside posts, ex: convert http://google.com to clickable link
+	+ Added noindex nofollow meta tag header for login, post and admin pages.
+	+ Added latest clasibase.com news to dashboard 
+	+ Prevent block its own IP address. 
+	+ Added debug mode for logged in admin if selected 
+	+ Added search form to 404 not found page and changed page title to have 404 in it
+	+ Added alternate version meta tag for multilingual sites
+	+ Added location variable to category description {location_or_sitename}, useful to customize category descriptions to fit defined locations.
+	+ Customize from email address from admin panel
+	+ Updated defining pages in settings, uses dropdown element instead of text field for page selecting.
+	+ Added settings to change powered by string useful if you build site for your client and want them to visit your site for support. Also added option to hide powered by link for front pages and non admins. 
+	+ Added previous, next links to ad page content and header
+	+ Convert theme from mobile first to desktop first to for better layout in IE7-8 and old mobile phones.
+	+ Further tune mobile styles to reveal side navigation by clicking, and compacting category pages in admin.	
+	+ Added PHP mode to text widget
+	+ Update theme from admin panel, backup old theme 
+	+ Update search with removable filters
+	+ Using location and category description in meta description and inside page. Base theme updated.
+	+ Added inner top and inner bottom widget locations
+	+ Added alt text to images in Base theme
+	+ Added caching for reducing database load
+	+ Changed lightbox and facebox javascript to better colorbox in admin and base theme for image galleries
+	+ Fixed information messages displayed when verifying ad posting
+	+ Fixed message displayed after submitting an ad. Also redirects to ad page with ?item_posted=1 in url for better tracking by analytics software.
+	+ Fixed index page loading with additions like ?ref=123 in url. previously was displaying 404 error page
+	+ Fixed titles in RSS items with quotes
+Version: 1.2.1 (2013.02.22)
+	+ Fixed mail template preventing sending empty mails
+	+ Added clarification to contact email and phone. User can select hide email address when contact phone number presented, if not it contact form will be used to contact seller.
+Version: 1.2 (2013.02.18)
+	+ Fixed user relation to existing ads when adding new user
+	+ Added auto translation for supported languages in admin language translation
+	+ Translated script to Russian and Turkish
+	+ Send email when verified ad approved by admin, also display proper message for such ad
+	+ Added searching users by email in admin
+	+ Converted Cyrillic characters to Latin when populating ad permalinks, to increase url readability and improve SEO.
+	+ Implemented product microdata from schema.org to base theme. This will make page data structured on google search results.
+	+ Implemented The Open Graph protocol http://ogp.me for better facebook integration to base theme.
+	+ Added sitemap.xml for search engines to index more content
+	+ Updated Base theme to version 1.2
+Version: 1.1 (2013.02.08)
+	+ Clear cache: deletes image cache, new cache will be populated on next page visit. Added control in admin - tools.
+	+ Import ads: supports predefined XML format. category, location, custom fields will be created if not exists, images. only default language will be imported. Supports XZero classifieds script, other scripts can be supported by customizing default export file. 
+	+ Updated rss feed to display ad image in description, added rss header
+	+ Added link to category listing in rss feed items
+	+ Added pagination for listings per user page
+	+ Added widget type when editing widget
+	+ Fixed page population when new language added
+	+ Fixed missing site title and description when new language added
+	+ Added current location consistency when performing search refinement
+	+ Added default location to settings, it is used as preferred location for index page for first time visitor. 
+	+ Added location cookie to store latest viewed location by visitor. On next visit visitor will be set to that location for making site more personalized. 
+	+ Display expired ad when page loaded directly from url, display date when expired.
+	+ Added robots.txt file to disable indexing for admin and login pages
+Version: 1.0 (2013.01.26)
+	+ Initial release: ads, categories, locations, custom fields, dealers, paid options ...
+
+
+Update Release checklist:
+-+ change version number in setup.sql
+-+ change version number in Config.php
+-+ do translations for russian and turkish language
+-+ if themes updated then change css, js links add date if updated
+-+ add version log to theme, change info.php version numbers
+- zip and upload files to server, (remove files: .htaccess, config.php, user-content/uploads/*, user-content/themes/[-base]*, /nbproject)
+- update demo
+- add change log to website and themes if required
+- update file download links to new version 
