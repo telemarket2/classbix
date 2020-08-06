@@ -1,0 +1,34 @@
+Version: 1.9.3 (2020.04.29)
+	+ Updated schema markup to JSON-LD
+Version: 1.9.2 (2019.01.08)
+	+ Fixed not visible checkbox custom fields on ad view page 
+Version: 1.9.1 (2018.05.05)
+	+ Fixed CSS bugs
+Version: 1.9 (2018.04.25)
+	+ Added support for script version 1.8
+	+ Updated, combined, minified js and css files
+Version: 1.8 (2018.03.02)
+	+ Added support for script version 1.8
+	+ Added ad view count
+Version: 1.7.8 (2015.04.17)
+	+ Update jquery and colorbox versions
+	+ Removed addthis integration
+	+ Added support for script version 1.7.8	
+Version: 1.7.6 (2014.09.11)
+	+ Added support for script version 1.7.6
+Version: 1.6 (2014.04.19)
+	+ Added support for script version 1.6
+Version: 1.5.1 (2014.03.07)
+	+ Fixed chain menu focus bug
+Version: 1.5 (2014.03.02)
+	+ Added support for script version 1.5
+Version: 1.4.7 (2014.01.27)
+	+ Added support for script version 1.4.7
+Version: 1.3 (2014.01.20)
+	+ Added support for script version 1.4.6
+Version: 1.2 (2013.10.05)
+	+ Added default colors as color scheme
+Version: 1.1 (2013.10.04)
+	+ Added color, font and background image customization
+Version: 1.0 (2013.09.27)
+	+ Initial release
