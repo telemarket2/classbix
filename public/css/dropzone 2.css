@@ -1,0 +1,26 @@
+.dropzone,.dropzone * { box-sizing: border-box}
+.dropzone { position: relative}
+.dropzone .dz-preview { position: relative; display: inline-block; width: 120px; margin: 0.5em}
+.dropzone .dz-preview .dz-progress { display: block; height: 15px; border: 1px solid #aaa}
+.dropzone .dz-preview .dz-progress .dz-upload { display: block; height: 100%; width: 0; background: green}
+.dropzone .dz-preview .dz-error-message { color: red; display: none}
+.dropzone .dz-preview.dz-error .dz-error-message,
+.dropzone .dz-preview.dz-error .dz-error-mark,
+.dropzone .dz-preview.dz-success .dz-success-mark { display: block}
+.dropzone .dz-preview .dz-error-mark,
+.dropzone .dz-preview .dz-success-mark { position: absolute; display: none; width: 54px; height: 58px; left: 50%; margin-left: -27px; top: 50%; margin-top: -29px}
+
+/* custom styles */
+.dropzone .dz-message-upload,.dropzone .dz-preview{width: 90px; height: 90px;max-width:40%;border: solid 1px #999;vertical-align: top; margin: 10px; }
+.dropzone .dz-message-upload{display: inline-block; font-size: 80px; line-height: 1; text-align: center; text-decoration: none; cursor: pointer; font-weight: 100;vertical-align: top;}
+.dropzone .dz-message-upload:hover{text-decoration: none; background-color: white;}
+.dropzone .dz-preview .dz-image img{width: 90px; height: 90px; min-width: 100%;min-height: 100%;object-fit: cover;}
+.dropzone .dz-preview .dz-image{max-height: 100%; overflow: hidden;}
+.dropzone .dz-preview .dz-progress{position: absolute;top: 45%; border-radius: 5px; height: 10px; width: 80%; left: 10%; background-color: white;border: solid 1px #999; padding:1px;}
+.dropzone .dz-preview .dz-progress .dz-upload {border-radius: 5px;background-color: #999; }
+.dropzone .dz-preview.dz-complete .dz-progress{display: none;}
+.dropzone .dz-details{display: none;}
+.dropzone .dz-remove{position: absolute;right: -5px; top:-5px; width: 20px; height: 20px; border-radius: 50%; font-size: 16px; line-height: 1;text-align: center;background-color: red;color: white;text-decoration: none;box-shadow: 0 0 3px black; border: solid 2px white; }
+.dropzone .dz-remove:hover{text-decoration: none;border: solid 2px red;}
+.dropzone .dz-preview.dz-success .dz-success-mark {display: none;}
+.dropzone.dz-max-files-reached .dz-message{display: none;}

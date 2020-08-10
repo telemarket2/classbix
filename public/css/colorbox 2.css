@@ -1,0 +1,72 @@
+/*
+    Colorbox Core Style:
+    The following CSS is consistent between example themes and should not be altered.
+*/
+#colorbox, #cboxOverlay, #cboxWrapper{position:absolute; top:0; left:0; z-index:9999;}
+#cboxWrapper {max-width:none;}
+#cboxOverlay{position:fixed; width:100%; height:100%;}
+#cboxMiddleLeft, #cboxBottomLeft{clear:left;}
+#cboxContent{position:relative;}
+#cboxLoadedContent{overflow:auto; -webkit-overflow-scrolling: touch;}
+#cboxTitle{margin:0;}
+#cboxLoadingOverlay, #cboxLoadingGraphic{position:absolute; top:0; left:0; width:100%; height:100%;}
+#cboxPrevious, #cboxNext, #cboxClose, #cboxSlideshow{cursor:pointer;}
+.cboxPhoto{float:left; margin:auto; border:0; display:block; max-width:none; -ms-interpolation-mode:bicubic;}
+.cboxIframe{width:100%; height:100%; display:block; border:0; padding:0; margin:0;}
+#colorbox, #cboxContent, #cboxLoadedContent{box-sizing:content-box; -moz-box-sizing:content-box; -webkit-box-sizing:content-box;}
+
+/*
+    User Style:
+    Change the following styles to modify the appearance of Colorbox.  They are
+    ordered & tabbed in a way that represents the nesting of the generated HTML.
+*/
+#cboxOverlay{background:#000;}
+#colorbox{outline:0;}
+#cboxContent{margin-top:40px;background:#fff;}
+.cboxIframe{background:#fff;}
+#cboxError{padding:50px; border:1px solid #ccc;}
+#cboxLoadedContent{border:1px solid #000; background:#fff;}
+#cboxTitle,#cboxCurrent{position:absolute; top:-30px; color:#ccc;text-shadow: 1px 1px 1px #000;}
+#cboxTitle{left:0;}
+#cboxCurrent{right:30px;}
+#cboxLoadingGraphic{background:url(../images/colorbox/loading.gif) no-repeat center center; opacity: 0.7; border-radius: 5px; overlay:hidden;}
+
+/* these elements are buttons, and may need to have additional styles reset to avoid unwanted base styles */
+#cboxPrevious, 
+#cboxNext, 
+#cboxSlideshow, 
+#cboxClose {border:0; padding:0; margin:0; overflow:visible; width:auto; background:none; 
+			font-family: Arial,Baskerville,monospace; font-size: 28px; color: #fff; 
+			opacity: 0.7;filter: alpha(opacity=70); 
+			text-shadow: 1px 1px 1px #000;
+}
+#cboxPrevious:hover, #cboxNext:hover, #cboxSlideshow:hover, #cboxClose:hover,
+#cboxPrevious:focus, #cboxNext:focus, #cboxSlideshow:focus, #cboxClose:focus {background-color:rgba(0,0,0,0.3); opacity: 1; filter: alpha(opacity=100);}
+
+/* avoid outlines on :active (mouseclick), but preserve outlines on :focus (tabbed navigating) */
+#cboxPrevious:active, #cboxNext:active, #cboxSlideshow:active, #cboxClose:active {outline:0;}
+
+#cboxSlideshow{position:absolute; top:-30px; right:90px; color:#fff;font-size: 16px;}
+#cboxPrevious,#cboxNext{position:fixed; top:0px;  margin-top:0px; width:50px; height:100%;}
+#cboxPrevious{left:0px;}
+#cboxNext{right:0px;}
+#cboxClose{position:absolute; display:block; height:40px; line-height: 40px; 
+		   top:-40px; width: 100%; text-align: right;right: 0;}
+.cboxModal{overflow: hidden;}
+
+@media screen and (max-width: 800px) and (orientation: landscape), screen and (max-height: 450px) {
+	/*mobile*/
+	#cboxTitle,
+	#cboxCurrent,
+	#cboxClose,
+	#cboxSlideshow{position:fixed; top:0; text-shadow: 1px 1px 1px #000;background-color:rgba(0,0,0,0.3);opacity: 1; filter: alpha(opacity=100);}
+	#cboxTitle,#cboxCurrent{padding:2px 5px;  color:#fff;}
+	#cboxCurrent{right: 41px;}
+	#cboxClose	{width: 40px; text-align: center; }
+	#cboxContent{margin-top: 0;}
+	#cboxPrevious,#cboxNext{width: 40px;}
+}
+@media all and (max-width: 960px) {
+	.cboxModal{overflow: auto;}
+}
+/*    Colorbox END    */
