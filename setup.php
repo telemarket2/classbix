@@ -1,7 +1,6 @@
 <?php
 /**
  * ClassiBase Classifieds Script
- *
  * ClassiBase Classifieds Script by Vepa Halliyev is licensed under a Creative Commons Attribution-Share Alike 3.0 License.
  *
  * @package		ClassiBase Classifieds Script
