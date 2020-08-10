@@ -30,6 +30,7 @@ class Location extends Record
 	static private $arr_tree;
 	static private $arr_tree_reverse = array();
 	static private $arr_locs_by_name = array();
+	static private $bulk_insert = false;
 	private static $cols = array(
 		'id'		 => 1,
 		'parent_id'	 => 1,
@@ -69,6 +70,12 @@ class Location extends Record
 			$this->parent_id = self::checkPossibleParent($this->id, $this->parent_id);
 		}
 
+		// set other defaults if not set
+		if (!isset($this->enabled))
+		{
+			$this->enabled = 1;
+		}
+
 		$this->added_at = REQUEST_TIME;
 		$this->added_by = AuthUser::$user->id;
 		return true;
@@ -102,9 +109,14 @@ class Location extends Record
 
 		$return = $this->updateDescription();
 
-		self::_clearCache();
 
-		AdCategoryCount::autoDisbaleAdCount();
+		// on bulk insert disable these. 
+		// they should be called at the end of bulk insert
+		if (!self::$bulk_insert)
+		{
+			self::_clearCache();
+			AdCategoryCount::autoDisbaleAdCount();
+		}
 
 		return $return;
 	}
@@ -137,14 +149,12 @@ class Location extends Record
 	function beforeDelete()
 	{
 		// delete locations
-		// get all sub locations
-		$locations_tree = self::getAllLocationNamesTree();
-		if (isset($locations_tree[$this->id]))
+		// get all sub locations from db. 
+		// Do not use cache because in cache it is object not location class but cleaned object with stdclass
+		$sub = Location::findAllFrom('Location', 'parent_id=?', array($this->id));
+		foreach ($sub as $c)
 		{
-			foreach ($locations_tree[$this->id] as $c)
-			{
-				$c->delete('id');
-			}
+			$c->delete('id');
 		}
 
 		// delete descriptions
@@ -376,7 +386,8 @@ class Location extends Record
 	{
 		if (!isset(self::$arr_tree))
 		{
-			// create empty values if no categories found
+
+			// set tree only here 
 			self::$arr_tree = array();
 			self::$arr_tree[self::STATUS_ALL] = array();
 			self::$arr_tree[self::STATUS_ENABLED] = array();
@@ -384,8 +395,8 @@ class Location extends Record
 			self::$arr_tree_reverse[self::STATUS_ALL] = array();
 			self::$arr_tree_reverse[self::STATUS_ENABLED] = array();
 
-			$cache_key = 'locations.' . I18n::getLocale();
 
+			$cache_key = 'locations.' . I18n::getLocale();
 			$locations = SimpleCache::get($cache_key);
 			if ($locations === false)
 			{
@@ -394,27 +405,17 @@ class Location extends Record
 
 				// old way use appending function
 				self::appendName($locations);
-				
+
 				// store data in cache 
 				SimpleCache::set($cache_key, $locations, 86400); //24 hours
 			}
 
-
 			foreach ($locations as $c)
 			{
-				self::$arr_tree[self::STATUS_ALL][$c->parent_id][] = $c;
-				self::$arr_tree_reverse[self::STATUS_ALL][$c->id] = $c;
-
-				if ($c->enabled)
-				{
-					self::$arr_tree[self::STATUS_ENABLED][$c->parent_id][] = $c;
-					self::$arr_tree_reverse[self::STATUS_ENABLED][$c->id] = $c;
-				}
+				self::getAllLocationNamesTreeUpdate($c);
 			}
 			unset($locations);
 		}
-
-
 
 		if ($reverse)
 		{
@@ -422,6 +423,91 @@ class Location extends Record
 		}
 
 		return self::$arr_tree[$status];
+	}
+
+	/**
+	 * Add location to memory. 
+	 * Added when read from database or cache
+	 * Added when added new location in batch insert
+	 * 
+	 * 
+	 * 
+	 * @param stdClass $record is stdClass:if from cache, Location if from DB or New Location
+	 */
+	private static function getAllLocationNamesTreeUpdate($record)
+	{
+		// add only if record id >0
+		if ($record->id > 0)
+		{
+			// tree not loaded
+			if (!isset(self::$arr_tree))
+			{
+				// load tree first 
+				self::getAllLocationNamesTree();
+			}
+
+			if (!isset(self::$arr_tree[self::STATUS_ALL][$record->parent_id]))
+			{
+				self::$arr_tree[self::STATUS_ALL][$record->parent_id] = array();
+			}
+
+			self::$arr_tree[self::STATUS_ALL][$record->parent_id][] = $record;
+			self::$arr_tree_reverse[self::STATUS_ALL][$record->id] = $record;
+
+			if ($record->enabled)
+			{
+				if (!isset(self::$arr_tree[self::STATUS_ENABLED][$record->parent_id]))
+				{
+					self::$arr_tree[self::STATUS_ENABLED][$record->parent_id] = array();
+				}
+				self::$arr_tree[self::STATUS_ENABLED][$record->parent_id][] = $record;
+				self::$arr_tree_reverse[self::STATUS_ENABLED][$record->id] = $record;
+			}
+		}
+	}
+
+	/**
+	 * Check if some pain parent are not linked to root and not visible in script.
+	 * This happen if delete or bulk insert operation not finished and halted by error 
+	 * 
+	 */
+	static public function checkNotFoundParents()
+	{
+		// check if we have records with non existing parent_record then create undefined parent in disabled mode and add them there 
+		// generate location tree
+		Location::getAllLocationNamesTree();
+
+		$arr_no_parent = array();
+		foreach (self::$arr_tree_reverse[self::STATUS_ALL] as $record)
+		{
+			// parent not 0 and not found then add to $arr_no_parent
+			if ($record->parent_id != 0 && !isset(self::$arr_tree_reverse[self::STATUS_ALL][$record->parent_id]))
+			{
+				$arr_no_parent[$record->parent_id] = true;
+			}
+		}
+
+		if ($arr_no_parent)
+		{
+			// check make undefined parent location and make sure it is disabled 
+			$undefined = Location::checkMakeByName('undefined');
+
+			// make sure it is disabled 
+			if ($undefined->enabled || !isset($undefined->enabled))
+			{
+				// enabled 
+				$undefined->enabled = 0;
+				Location::update('Location', array('enabled' => 0), 'id=?', array($undefined->id));
+			}
+
+			$arr_no_parent_ = Record::quoteArray(array_keys($arr_no_parent));
+
+			// move all locations with no parent to $location_undefined 
+			Location::update('Location', array('parent_id' => $undefined->id), 'parent_id IN (' . implode(',', $arr_no_parent_) . ')', array());
+
+			// clear cache 
+			Location::_clearCache();
+		}
 	}
 
 	public static function appendName($locations)
@@ -462,6 +548,47 @@ class Location extends Record
 		}
 
 		return $tree;
+	}
+
+	/**
+	 * generate location tree for info only, used in admin only
+	 * Used when deleting location with sublocations.
+	 * If location has too many sub (1000+) then delete page will load very slow. 
+	 * Show only 100 first degree subs, 10 from other degrees. 
+	 * Add (+54 more) for truncated values 
+	 * 
+	 * @param array $locations
+	 * @param int $parent_id
+	 * @return string
+	 */
+	public static function htmlLocationTreeTruncated($locations, $parent_id = 0)
+	{
+		// scan given locations array and reduce subs
+		$locations_truncated = array();
+		$tolerate = 5;
+
+		foreach ($locations as $key => $arr)
+		{
+			if ($key == $parent_id)
+			{
+				$num = 100;
+			}
+			else
+			{
+				$num = 10;
+			}
+			$cnt = count($arr);
+			if ($cnt > $num + $tolerate)
+			{
+				// truncate it and update last item with more text 
+				$arr = array_slice($arr, 0, $num);
+				$last = end($arr);
+				$last->LocationDescription->name .= ' (' . __('{num} more', array('{num}' => '+' . ($cnt - $num))) . ')';
+			}
+			$locations_truncated[$key] = $arr;
+		}
+
+		return Location::htmlLocationTree($locations_truncated, $parent_id);
 	}
 
 	/**
@@ -552,6 +679,7 @@ class Location extends Record
 		if ($current_id == $parent_id)
 		{
 			// cannot be parent of self 
+			Benchmark::cp('checkPossibleParent:cannot be parent of self:c' . $current_id . ':p' . $parent_id . ':r0');
 			return 0;
 		}
 
@@ -560,6 +688,7 @@ class Location extends Record
 		if (!$parent)
 		{
 			// parent not found return root id 0
+			Benchmark::cp('checkPossibleParent:parent not found return root id 0:c' . $current_id . ':p' . $parent_id . ':r0');
 			return 0;
 		}
 
@@ -571,6 +700,7 @@ class Location extends Record
 			if (self::isChildOf($current, $parent))
 			{
 				// closed loop detected  return rooot id 0
+				Benchmark::cp('checkPossibleParent:closed loop detected  return rooot id 0:c' . $current_id . ':p' . $parent_id . ':r0');
 				return 0;
 			}
 		}
@@ -746,14 +876,52 @@ class Location extends Record
 		// save description if set
 		if ($this->LocationDescription)
 		{
+
+			// optimize to insert in one query 
+			/*
+			  INSERT INTO cb_location_description (location_id, language_id, name, description)
+			  VALUES
+			  ('916', 'en', 'cat1.26', ''),
+			  ('916', 'ru', 'cat1.26', ''),
+			  ('916', 'tr', 'cat1.26', '')
+			  ON DUPLICATE KEY UPDATE
+			  name = VALUES(name),
+			  description = VALUES(description)
+			  ;
+
+			 */
+
+			$arr_where = array();
+			$values = array();
+
 			foreach ($this->LocationDescription as $cd)
 			{
+				// fix name and description 
+				LocationDescription::fixNameDescription($cd);
 				$cd->location_id = $this->id;
 
+				$arr_where[] = "(?, ?, ?, ?)";
+				// location_id
+				$values[] = $cd->location_id;
+				// language_id
+				$values[] = $cd->language_id;
+				$values[] = $cd->name;
+				$values[] = $cd->description;
+
+
 				// delete description first
-				LocationDescription::deleteWhere('LocationDescription', 'location_id=? AND language_id=?', array($cd->location_id, $cd->language_id));
-				$cd->save('new_id');
+				//LocationDescription::deleteWhere('LocationDescription', 'location_id=? AND language_id=?', array($cd->location_id, $cd->language_id));
+				//$cd->save('new_id');
 			}
+
+			// set new values 
+			$sql = "INSERT INTO " . LocationDescription::tableNameFromClassName('LocationDescription') . " 
+						(location_id, language_id, name, description)
+					VALUES " . implode(', ', $arr_where) . "  
+					ON DUPLICATE KEY UPDATE
+						name = VALUES(name),
+						description = VALUES(description)";
+			LocationDescription::query($sql, $values);
 		}
 
 		return true;
@@ -857,9 +1025,26 @@ class Location extends Record
 		Location::appendAll($arr_rec);
 	}
 
+	/**
+	 * get last positin in parent. 
+	 * used to add item to the end of list.
+	 * 
+	 * @param int $parent_id
+	 * @return int
+	 */
 	public static function getLastPosition($parent_id = 0)
 	{
-		$last = self::findOneFrom('Location', 'parent_id=? ORDER BY pos DESC', array(intval($parent_id)));
+		$parent_id = intval($parent_id);
+
+		// check if location tree loaded use it
+		if (isset(self::$arr_tree[self::STATUS_ALL][$parent_id]))
+		{
+			$last = end(self::$arr_tree[self::STATUS_ALL][$parent_id]);
+		}
+		else
+		{
+			$last = self::findOneFrom('Location', 'parent_id=? ORDER BY pos DESC', array($parent_id));
+		}
 
 		return intval($last->pos);
 	}
@@ -988,8 +1173,18 @@ class Location extends Record
 		return false;
 	}
 
+	/**
+	 * 
+	 * Import items from given string 
+	 * Separator new line and |
+	 * Break inserting if execution time is more than max_time, return 'string_left'=>$str_left
+	 * 
+	 * @param string $str
+	 * @return array
+	 */
 	public static function importString($str)
 	{
+		$return = array();
 
 		/** $str :
 		 * Category1
@@ -999,36 +1194,76 @@ class Location extends Record
 		  Category2
 		  ...
 		 */
+		// set as bulk insert to prevent location cache clearing
+		// clear first and last 
+		self::_clearCache();
+		self::$bulk_insert = true;
+
+		// run for 10 s. if no tfinished then import ni batches of 10 seconds 
+		$max_run_time = 10;
+
+
 		$lines = explode("\n", $str);
-		$table = array();
 		$count = 0;
-		foreach ($lines as $line)
+		foreach ($lines as $key => $line)
 		{
 			$line = trim($line);
-			if (!$line)
+			if (!strlen($line))
 			{
+				// empty line
 				continue;
 			}
-			$table[] = explode("|", $line);
-		}
 
-		foreach ($table as $location_path)
-		{
+			$location_path = explode("|", $line);
+
 			// insert location if not exists
 			$location = self::checkMakeByName($location_path);
 			if ($location)
 			{
 				$count++;
 			}
+
+			if (Benchmark::totalTime() > $max_run_time)
+			{
+				// return left lines 
+				$lines = array_slice($lines, $key);
+				if (count($lines) > 1)
+				{
+					$return['string_left'] = implode("\n", $lines);
+				}
+				// break here 
+				break;
+			}
 		}
 
-		return $count;
+		unset($lines);
+
+		// clear cache after bulk insert as well 
+		self::$bulk_insert = false;
+		self::_clearCache();
+
+		// perform other skipped actions because of bulk upload
+		AdCategoryCount::autoDisbaleAdCount();
+
+		$return['count'] = $count;
+
+		return $return;
 	}
 
 	public static function nextAutoId()
 	{
-		$latest_cat = Location::findOneFrom('Location', '1=1 ORDER BY id desc', array(), MAIN_DB, 'id');
-		return $latest_cat->id + 1;
+		// use tree when possible 
+		if (isset(self::$arr_tree_reverse[self::STATUS_ALL]) && count(self::$arr_tree_reverse[self::STATUS_ALL]))
+		{
+			$max = max(array_keys(self::$arr_tree_reverse[self::STATUS_ALL]));
+		}
+		else
+		{
+			$latest_cat = Location::findOneFrom('Location', '1=1 ORDER BY id desc', array(), MAIN_DB, 'id');
+			$max = $latest_cat->id;
+		}
+
+		return $max + 1;
 	}
 
 	/**
@@ -1075,6 +1310,17 @@ class Location extends Record
 						$location->LocationDescription[$lng->id] = $cd;
 					}
 					$location->save();
+
+					// location saved add to memory location with current lng name
+					// set same variables used in self::appendName($locations) -> location_id,language_id,name
+					// $ld_arr = $location->LocationDescription;
+					$location->LocationDescription = new LocationDescription();
+					$location->LocationDescription->location_id = $location->id;
+					$location->LocationDescription->language_id = I18n::getLocale();
+					$location->LocationDescription->name = $name;
+					self::getAllLocationNamesTreeUpdate($location);
+
+					// increase added record count 
 					$count++;
 				}
 				self::$arr_locs_by_name[$parent_id][$name] = $location;
@@ -1167,10 +1413,27 @@ class Location extends Record
 	 */
 	private static function _clearCache()
 	{
+		// prevent clearing if it is bulk insert 
+		if (self::$bulk_insert)
+		{
+			return false;
+		}
+
 		// delete category cache
 		SimpleCache::delete('locations');
+
+		// clear local location trees 
+		self::$arr_tree = null;
+		self::$arr_tree_reverse = array();
+
 		// update json version to request updated location data
-		Config::optionSet('json_version', REQUEST_TIME);
+		$json_version = Config::option('json_version');
+		if ($json_version != REQUEST_TIME)
+		{
+			Config::optionSet('json_version', REQUEST_TIME);
+		}
+
+		return true;
 	}
 
 }

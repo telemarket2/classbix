@@ -534,7 +534,7 @@ Class TextTransform
 			{
 				if (isset($arr_keywords2[$key]))
 				{
-					$arr_keywords2[$key] ++;
+					$arr_keywords2[$key]++;
 				}
 				else
 				{
@@ -694,14 +694,23 @@ Class TextTransform
 		return $text;
 	}
 
+	/**
+	 * Check if text changed. do not check number. 
+	 * 
+	 * @param string $str1
+	 * @param string $str2
+	 * @return boolean 
+	 */
 	static public function text_is_changed($str1, $str2)
 	{
 		// check if given text changed 
 		// remove numbers 
-		//  normalize strings
+		// normalize strings
 		$str1_arr = TextTransform::text_normalize($str1, 'metaphone_soundex', 'array');
 		$str2_arr = TextTransform::text_normalize($str2, 'metaphone_soundex', 'array');
 
+		$str1_arr_ = array();
+		$str2_arr_ = array();
 
 		// remove numbers 
 		foreach ($str1_arr as $val)
@@ -713,9 +722,10 @@ Class TextTransform
 				$str1_arr_[] = $val;
 			}
 		}
-		$str1 = implode('', $str1_arr_);
+		$str1 = implode(' ', $str1_arr_);
 		unset($str1_arr);
 		unset($str1_arr_);
+
 
 		foreach ($str2_arr as $val)
 		{
@@ -726,7 +736,7 @@ Class TextTransform
 				$str2_arr_[] = $val;
 			}
 		}
-		$str2 = implode('', $str2_arr_);
+		$str2 = implode(' ', $str2_arr_);
 		unset($str2_arr);
 		unset($str2_arr_);
 
@@ -817,7 +827,7 @@ Class TextTransform
 	 * Normalize and convert current text to metaphone-soundex string
 	 * 
 	 * @param string $str
-	 * @param string $method metaphone_soundex|double_metaphone
+	 * @param string $method metaphone_soundex|double_metaphone|all|search|plain|
 	 * @param string $return_format null|array
 	 * @return sring
 	 */

@@ -38,7 +38,7 @@ class AdminController extends Controller
 		$header_other = '<meta name="robots" content="noindex, nofollow" />';
 		$this->setMeta('header_other', $header_other);
 
-		//Config::performPassiveUpdates();
+		//Config::performPassiveUpdates();		
 	}
 
 	function index()
@@ -1381,6 +1381,9 @@ class AdminController extends Controller
 							// save custom fields
 							$ad->saveCustomFields($_POST, $catfields);
 
+							// check if title and description text chanegd, uses $ad->title_old , $ad->description_old
+							Ad::checkTextChange($ad);
+
 
 							// delete selected images
 							if ($_POST['adpic_delete'])
@@ -1399,6 +1402,7 @@ class AdminController extends Controller
 								if ($uploads['num_uploaded'] > 0)
 								{
 									$msg_images = __('{num} images attached to listing.', array('{num}' => $uploads['num_uploaded']));
+									// new images added so send to moderation if set in settings
 									// we alredy saved ad so send for moderation if defined in settings
 									Ad::autoApproveChanged($ad);
 								}
@@ -1875,7 +1879,7 @@ class AdminController extends Controller
 		return $result;
 	}
 
-	function categories($parent_id = 0)
+	function categories($parent_id = 0, $page = 1)
 	{
 		AuthUser::hasPermission(User::PERMISSION_ADMIN, false, true);
 
@@ -1904,9 +1908,30 @@ class AdminController extends Controller
 
 		$this->assignToLayout('breadcrumb', $breadcrumb);
 
-		//$args = func_get_args();
+
+		// check no parent categories 
+		Category::checkNotFoundParents();
+
+
+		// get locations with pagination 
+		if (!$page)
+		{
+			$page = 1;
+		}
+		// show no more than 100 items per page 
+		$perpage = 300;
+		$total = Category::countFrom('Category', 'parent_id=?', array($parent_id));
+		$st = ($page - 1) * $perpage;
+		$total_pages = ceil($total / $perpage);
+		// if no ads for given page then go to first page 
+		if ($st > 0 && $st >= $total && $page > 1)
+		{
+			$page = 1;
+			$st = 0;
+		}
+		$paginator = Paginator::render($page, $total_pages, Language::get_url('admin/categories/' . $parent_id . '/{page}/'));
 		// get categories
-		$categories = Category::findAllFrom('Category', 'parent_id=? ORDER BY pos,id', array($parent_id));
+		$categories = Category::findAllFrom('Category', 'parent_id=? ORDER BY pos,id LIMIT ' . $st . ',' . $perpage, array($parent_id));
 
 		// appen name
 		Category::appendName($categories);
@@ -1917,11 +1942,10 @@ class AdminController extends Controller
 		// append ad counts
 		Category::appendAdCount($categories);
 
-
-
 		$this->display('admin/categories', array(
 			'categories'		 => $categories,
 			'menu_selected'		 => 'admin/categories/',
+			'paginator'			 => $paginator,
 			'parent_category'	 => $parent_category,
 		));
 	}
@@ -2024,8 +2048,7 @@ class AdminController extends Controller
 
 		// get subcategories tree
 		$categories_tree = Category::getAllCategoryNamesTree();
-		$subcategory_tree = Category::htmlCategoryTree($categories_tree, $category->id);
-
+		$subcategory_tree = Category::htmlCategoryTreeTruncated($categories_tree, $category->id);
 
 		// breadcrumb
 		$breadcrumb = array(
@@ -2206,7 +2229,13 @@ class AdminController extends Controller
 		}
 	}
 
-	function locations($parent_id = 0)
+	/**
+	 * Show locations for given parent_id
+	 * 
+	 * @param int $parent_id
+	 * @param int $page
+	 */
+	function locations($parent_id = 0, $page = 1)
 	{
 		AuthUser::hasPermission(User::PERMISSION_ADMIN, false, true);
 
@@ -2236,11 +2265,33 @@ class AdminController extends Controller
 
 		$this->assignToLayout('breadcrumb', $breadcrumb);
 
-		//$args = func_get_args();
-		// get locations
-		$locations = Location::findAllFrom('Location', 'parent_id=? ORDER BY pos,id', array($parent_id));
 
-		// appen name
+		// check no parent locations 
+		Location::checkNotFoundParents();
+
+
+
+		// get locations with pagination 
+		if (!$page)
+		{
+			$page = 1;
+		}
+		// show no more than 100 items per page 
+		$perpage = 300;
+		$total = Location::countFrom('Location', 'parent_id=?', array($parent_id));
+		$st = ($page - 1) * $perpage;
+		$total_pages = ceil($total / $perpage);
+		// if no ads for given page then go to first page 
+		if ($st > 0 && $st >= $total && $page > 1)
+		{
+			$page = 1;
+			$st = 0;
+		}
+		$paginator = Paginator::render($page, $total_pages, Language::get_url('admin/locations/' . $parent_id . '/{page}/'));
+
+		$locations = Location::findAllFrom('Location', 'parent_id=? ORDER BY pos,id LIMIT ' . $st . ',' . $perpage, array($parent_id));
+
+		// append name
 		Location::appendName($locations);
 
 		// append ad counts
@@ -2249,6 +2300,7 @@ class AdminController extends Controller
 		$this->display('admin/locations', array(
 			'locations'			 => $locations,
 			'parent_location'	 => $parent_location,
+			'paginator'			 => $paginator,
 			'menu_selected'		 => 'admin/locations/',
 		));
 	}
@@ -2348,7 +2400,7 @@ class AdminController extends Controller
 
 		// get sub locations tree
 		$locations_tree = Location::getAllLocationNamesTree();
-		$sublocation_tree = Location::htmlLocationTree($locations_tree, $location->id);
+		$sublocation_tree = Location::htmlLocationTreeTruncated($locations_tree, $location->id);
 
 
 		// breadcrumb
@@ -5821,11 +5873,54 @@ class AdminController extends Controller
 		exit('ok');
 	}
 
-	function import()
+	function import($action = '')
 	{
 		AuthUser::hasPermission(User::PERMISSION_ADMIN, false, true);
 
 		$this->_import();
+
+
+		// check if ignoring old not complete imports
+		switch ($action)
+		{
+			case '1':
+				SimpleCache::delete('bulk_import_locations_left');
+				SimpleCache::delete('bulk_import_categories_left');
+				break;
+			default:
+				// check for not copleted imports
+				$import_button = '';
+				$bulk_import_locations_left = SimpleCache::get('bulk_import_locations_left');
+				if ($bulk_import_locations_left !== false)
+				{
+					$count = substr_count($bulk_import_locations_left, "\n") + 1;
+					$import_button .= '<button class="button import_batch_loc" data-target=".import_batch_loc" data-toggle="cb_batch" data-url="admin/importContinue/locations/">' . __('Import {num} locations', array(
+								'{num}' => $count
+							)) . '</button> ';
+				}
+
+				$bulk_import_categories_left = SimpleCache::get('bulk_import_categories_left');
+				if ($bulk_import_categories_left !== false)
+				{
+					$count = substr_count($bulk_import_categories_left, "\n") + 1;
+					$import_button .= '<button class="button import_batch_cat" data-target=".import_batch_cat" data-toggle="cb_batch" data-url="admin/importContinue/categories/">' . __('Import {num} categories', array(
+								'{num}' => $count
+							)) . '</button> ';
+				}
+
+				if ($import_button)
+				{
+					// ignore button 
+					$import_button .= ' <a class="button" href="' . Language::get_url('admin/import/1/') . '">' . __('Ignore') . '</a>';
+					
+					$message = __('Items not completed from previous import. {button}', array(
+						'{button}' => $import_button
+					));
+
+					// show notice with batch process button
+					Validation::getInstance()->set_info($message);
+				}
+		}
 
 		$breadcrumb = array(
 			array(__('Home'), Language::get_url('admin/')),
@@ -5838,6 +5933,13 @@ class AdminController extends Controller
 		));
 	}
 
+	/**
+	 * Perform import action using uploaded file
+	 * Break if execution exceeds 10 seconds.
+	 * Add left items to cache, then cache used to show message with button to continue or ignore left items.
+	 * 
+	 * @return boolean
+	 */
 	function _import()
 	{
 		if (get_request_method() == 'POST' && $_FILES['file']['tmp_name'])
@@ -5851,18 +5953,116 @@ class AdminController extends Controller
 			if ($_POST['type'] == "category")
 			{
 				$imported = Category::importString(file_get_contents($_FILES['file']['tmp_name']));
+				
+				Flash::set('success', __('Imported {num} records', array('{num}' => intval($imported['count']))));
 
-				Flash::set('success', __('Imported {num} records', array('{num}' => $imported)));
-				redirect(Language::get_url('admin/categories/'));
+				// check if we have any import string left 
+				if ($imported['string_left'])
+				{
+					// store it in cache 
+					SimpleCache::set('bulk_import_categories_left', $imported['string_left']);
+					redirect(Language::get_url('admin/import/'));
+				}
+				else
+				{
+					redirect(Language::get_url('admin/categories/'));
+				}
 			}
 			elseif ($_POST['type'] == "location")
 			{
 				$imported = Location::importString(file_get_contents($_FILES['file']['tmp_name']));
 
-				Flash::set('success', __('Imported {num} records', array('{num}' => $imported)));
-				redirect(Language::get_url('admin/locations/'));
+				Flash::set('success', __('Imported {num} records', array('{num}' => intval($imported['count']))));
+
+				// check if we have any import string left 
+				if ($imported['string_left'])
+				{
+					// store it in cache 
+					SimpleCache::set('bulk_import_locations_left', $imported['string_left']);
+					redirect(Language::get_url('admin/import/'));
+				}
+				else
+				{
+					redirect(Language::get_url('admin/locations/'));
+				}
 			}
 		}
+	}
+
+	/**
+	 * Continue importing locations or categories that didn't finish in 10 seconds. 
+	 * Importing in batches of 10 second. 
+	 * Stops when completed or on error.
+	 * Requested from ajax
+	 * 
+	 * @param string $action  locations|categories
+	 */
+	function importContinue($action)
+	{
+
+		// check if admin 
+		$this->_hasPermissionAjax(User::PERMISSION_ADMIN, false, true);
+		$left_count = 0;
+		$imported = false;
+		$cache_key = '';
+
+		if (Config::nounceCheck())
+		{
+			switch ($action)
+			{
+				case 'locations':
+					// this is ajax call 
+					$cache_key = 'bulk_import_locations_left';
+					$str = SimpleCache::get($cache_key);
+					if ($str !== false)
+					{
+						$imported = Location::importString($str);
+					}
+					break;
+				case 'categories':
+					// this is ajax call 
+					$cache_key = 'bulk_import_categories_left';
+					$str = SimpleCache::get($cache_key);
+					if ($str !== false)
+					{
+						$imported = Category::importString($str);
+					}
+					break;
+			}
+		}
+		else
+		{
+			exit();
+		}
+
+		if ($imported && strlen($imported['string_left']) && strlen($cache_key))
+		{
+			// store it in cache 
+			SimpleCache::set($cache_key, $imported['string_left']);
+			$left_count = substr_count($imported['string_left'], "\n") + 1;
+
+			// continue importing in next batch 
+			$return = array(
+				'text'		 => __('Importing ({num} records left)', array(
+					'{num}' => $left_count
+				)),
+				'continue'	 => 1
+			);
+		}
+		elseif (strlen($cache_key))
+		{
+			// delete from cache it is completed 
+			SimpleCache::delete($cache_key);
+
+			// not found or completed. finish batch
+			$return = array(
+				'text'		 => __('Completed'),
+				'continue'	 => 0
+			);
+		}
+
+		$this->displayJSON(Config::arr2js($return));
+		exit;
 	}
 
 	function importAds()
@@ -6572,6 +6772,7 @@ class AdminController extends Controller
 		// check if admin 
 		$this->_hasPermissionAjax(User::PERMISSION_ADMIN, false, true);
 
+		// convert and update status
 		$left_count = AdFulltext::status(true);
 		if ($left_count == 0)
 		{

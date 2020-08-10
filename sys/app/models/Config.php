@@ -25,7 +25,7 @@ class Config extends Record
 
 	const TABLE_NAME = 'config';
 	const MAX_MEMORY_LIMIT = '256M';
-	const VERSION = '2.0.6';
+	const VERSION = '2.0.7';
 	const LOAD_ALL = false;
 	// TODO build site and set actual data here	
 	const UPDATE_URL = 'http://classibase.com/simcls-update/latest.php';
@@ -2176,6 +2176,7 @@ function updateCache(request, response) {
 	public static function arr2js($arr = array())
 	{
 		$islist = is_array($arr) && ( empty($arr) || array_keys($arr) === range(0, count($arr) - 1) );
+		$return = array();
 
 		if ($islist)
 		{

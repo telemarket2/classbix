@@ -20,7 +20,7 @@
 				. ($_img_thumb ? ' class="lazy" data-src="' . $_img_thumb . '"' : '')
 				. ' alt="' . $_img_title . '" '
 				. ' width="' . $thumb_width . '"'
-				. ' height="' . $thumb_height . '" />';
+				. ' height="' . $thumb_height . '" loading="lazy" />';
 
 		echo '<li class="thumb_item' . ($ad->featured ? ' featured' : '') . '">'
 		. '<a href="' . Ad::url($ad) . '" title="' . $_img_title . '" style="width:' . $thumb_width . 'px;" class="thumb_link">'

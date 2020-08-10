@@ -1279,11 +1279,17 @@ class Record
 		}
 
 		$objects = self::findAllFrom($class_name, $sql_extra . ' ' . $class_field . ' IN (' . implode(',', $ids_) . ') ' . $sql_after, array(), $con_type, $fields);
+		
+		unset($ids);
+		unset($ids_);
 
 		if (!$objects)
 		{
 			return false;
 		}
+
+
+		$objects_arr = array();
 
 		foreach ($objects as $o)
 		{
@@ -1312,6 +1318,8 @@ class Record
 				}
 			}
 		}
+		
+		unset($objects);
 
 		if (!$alt_name)
 		{
@@ -1323,6 +1331,8 @@ class Record
 		{
 			$r->{$alt_name} = $objects_arr[$r->{$field}];
 		}
+		
+		unset($objects_arr);		
 	}
 
 	/**

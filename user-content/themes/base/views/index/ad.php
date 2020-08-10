@@ -247,7 +247,7 @@ if (User::canDisplayDealerInfoOnAdPage($ad->User) && ($ad->User->logo || $ad->Us
 		$_img_thumb = User::logo($ad->User, null, 'lazy');
 		$_dealer_logo = '<img src="' . $_img_placeholder_src . '"'
 				. ($_img_thumb ? ' class="lazy user_logo" data-src="' . $_img_thumb . '"' : ' class="user_logo"')
-				. ' alt="' . View::escape($ad->User->name) . '" />';
+				. ' alt="' . View::escape($ad->User->name) . '" loading="lazy" />';
 	}
 	else
 	{

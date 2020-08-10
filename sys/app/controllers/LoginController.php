@@ -425,10 +425,9 @@ class LoginController extends Controller
 		Config::displayMessagePage(__('Incorrect verification link. Please make sure that url is exactly the same.'), 'error', true);
 	}
 
-	/*
+	/**
 	 * TODO use capcha to accept only user requests. 
 	 */
-
 	function resendActivation($user_id, $email_md5)
 	{
 		IpBlock::isBlockedIp();

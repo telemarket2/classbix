@@ -500,7 +500,7 @@ class PostController extends Controller
 		}
 
 		// activate ad make listed if not expired
-		$ad->verify();
+		Ad::verify($ad);
 
 
 		// find user by id

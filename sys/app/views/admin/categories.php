@@ -104,6 +104,8 @@ if ($categories)
 		?>
 	</table>
 	<?php
+	
+	echo $paginator;
 }
 else
 {

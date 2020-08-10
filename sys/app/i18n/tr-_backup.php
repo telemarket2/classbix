@@ -1268,5 +1268,11 @@
 'You have posted {num} items in {time}. {time_left} till you can post new item again.'=>'{num} ilanı {time} sürede eklediniz. Yeni ilan eklevebilmeniz için {time_left}.',
 'Clear all cache'=>'Tüm önbelleği temizle',
 'Clear data cache'=>'Veri önbelleğini temizle',
-'Clear image cache'=>'Görüntü önbelleğini temizle'
+'Clear image cache'=>'Görüntü önbelleğini temizle',
+'Ignore'=>'Yoksay',
+'Import {num} categories'=>'{num} kategori ekle',
+'Import {num} locations'=>'{num} konum ekle',
+'Importing ({num} records left)'=>'Ekleniyor ({num} kayıt kaldı)',
+'Items not completed from previous import. {button}'=>'Önceki ekleme ışlemınden kayıtlar kaldı. {button}',
+'{num} more'=>'{num} daha'
 );

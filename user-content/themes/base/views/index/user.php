@@ -12,7 +12,7 @@
 			$_img_thumb = User::logo($selected_user, null, 'lazy');
 			$_dealer_logo = '<img src="' . $_img_placeholder_src . '"'
 					. ($_img_thumb ? ' class="lazy user_logo" data-src="' . $_img_thumb . '"' : ' class="user_logo"')
-					. ' alt="' . View::escape($selected_user->name) . '" />';
+					. ' alt="' . View::escape($selected_user->name) . '" loading="lazy" />';
 		}
 
 		$_dealer_text = '<p>' . Config::formatText($selected_user->info) . '</p>';

@@ -3,7 +3,7 @@
 // define theme info and custom locations
 $info = array(
 	'name'				 => 'Classifieds Base Theme',
-	'version'			 => '2.0.5',
+	'version'			 => '2.0.7',
 	'version_required'	 => '2',
 	'description'		 => 'This is the Classifieds Base theme',
 	'author_name'		 => 'ClassiBase',

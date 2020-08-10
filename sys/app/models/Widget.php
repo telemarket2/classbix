@@ -1075,6 +1075,7 @@ class Widget extends Record
 
 		$return = '';
 		$used_estimate = false;
+		$multiplier = 1;
 
 		$selected_location = self::$_vars['selected_location'];
 
@@ -1097,9 +1098,15 @@ class Widget extends Record
 			// if custom query used then on page load custom search, total count and count by custom fields performs heawy DB queries. 
 			// each query taking 1-2 sec. so in total will wxceed 5 sec. which is not aceptible. 
 			// so estimate value using loaded ids, and total count
-			$used_estimate = true;
 			$custom_query = $cq->result->ids_1k_str;
 			$custom_query_vals = array();
+
+			$used_estimate = true;
+			if ($cq->result->total > $cq->result->count)
+			{
+				// multiply count with this amount. 
+				$multiplier = $cq->result->total / $cq->result->count;
+			}
 
 			/*
 			  $custom_query = $cq->query;
@@ -1194,7 +1201,7 @@ class Widget extends Record
 							{
 								$afvc = new stdClass();
 								$afvc->val = $afv->id;
-								$afvc->num = round($afvc_->{"val_" . $afv->id} * $multiplier);
+								$afvc->num = $afvc_->{"val_" . $afv->id} * 1;
 								if ($afvc->num)
 								{
 									$afv_counted[] = $afvc;
@@ -1215,7 +1222,10 @@ class Widget extends Record
 						{
 							if ($afvc->num > 0)
 							{
-								$_afv_counted[$afvc->val] = $afvc->num;
+								// $multiplier used to calculate estimate count when ids of 1k items used.
+								// ids may be same if showing results for last 7,30 days or all items.
+								// so do not cache estimates, and calculate estimation here
+								$_afv_counted[$afvc->val] = round($afvc->num * $multiplier);
 							}
 						}
 
@@ -2387,7 +2397,7 @@ class Widget extends Record
 									. ($_img_thumb ? ' class="lazy" data-src="' . $_img_thumb . '"' : '')
 									. ' alt="' . $_img_title . '" '
 									. ' width="' . $thumb_width . '"'
-									. ' height="' . $thumb_height . '" />';
+									. ' height="' . $thumb_height . '" loading="lazy" />';
 
 							$return .= '<a href="' . Ad::url($ad) . '" title="' . $_img_title . '" style="width:' . $thumb_width . 'px;">'
 									. $thumb
@@ -2421,7 +2431,7 @@ class Widget extends Record
 										. ($_img_thumb ? ' class="lazy" data-src="' . $_img_thumb . '"' : '')
 										. ' alt="' . View::escape(Ad::getTitle($ad)) . '"'
 										. ' width="' . $thumb_width . '"'
-										. ' height="' . $thumb_height . '"  />';
+										. ' height="' . $thumb_height . '" loading="lazy"  />';
 
 								$thumb = '<a href="' . Ad::url($ad) . '" class="thumb">'
 										. $thumb
@@ -3371,10 +3381,13 @@ class Widget extends Record
 	 */
 	public static function widgetUsers($widget)
 	{
+		Benchmark::cp('widgetUsers(' . $widget->id . '):START');
+
 		// get users
 		$selected_location = self::$_vars['selected_location'];
 		$number_of_users = $widget->getOption('number_of_users', false, true);
 		$display_ad_count = $widget->getOption('display_ad_count', false, true);
+		$append_counts = $display_ad_count;
 		// all,users,dealers
 		$list_type = $widget->getOption('list_type', false, true);
 		// latest, latest_posted, most_posted
@@ -3401,17 +3414,18 @@ class Widget extends Record
 				. '.' . $list_mode
 				. '.n' . $number_of_users
 				. '.l' . intval($selected_location->id)
+				. ($display_ad_count ? '.c' : '')
 				. ($display_with_image_only ? '.img' : '');
 
 		$users = SimpleCache::get($cache_key);
 		if ($users === false)
 		{
+			// set default 
+			$users = array();
 
 			$where_user = 'us.enabled=' . User::quote(1) . ' AND us.activation=' . User::quote(0);
 			//$whereA = array('us.enabled=? AND us.activation=?');
 			//$whereB = array('1', '0');
-
-
 
 			switch ($list_type)
 			{
@@ -3429,7 +3443,7 @@ class Widget extends Record
 
 			if ($display_with_image_only)
 			{
-				$where_user .= ' AND us.level=' . User::quote('');
+				$where_user .= ' AND us.logo!=' . User::quote('');
 				//$whereA[] = 'us.logo!=?';
 				//$whereB[] = '';
 			}
@@ -3443,50 +3457,67 @@ class Widget extends Record
 
 			$fields = 'id,name,email,username,logo';
 
+			$sql_user_exists = "SELECT 1 FROM " . User::tableNameFromClassName('User') . " us WHERE us.id=ad.added_by AND " . $where_user;
+
 			switch ($list_mode)
 			{
 				case 'most_posted':
-					// most posted users by location 
-
-					$sql_user_exists = "SELECT 1 FROM cb_user us WHERE us.id=ad.added_by AND " . $where_user;
+					// most posted users by location 				
 					$sql_ad_count = "SELECT count(ad.added_by) as num_ads ,ad.added_by as ad_added_by
-						FROM cb_ad ad
-						WHERE " . implode(' AND ', $whereA) . " AND EXISTS (" . $sql_user_exists . ")
-						GROUP BY ad.added_by ORDER BY num_ads DESC  LIMIT " . $number_of_users;
+					  FROM " . Ad::tableNameFromClassName('Ad') . " ad, " . User::tableNameFromClassName('User') . " us
+					  WHERE " . implode(' AND ', $whereA) . " AND us.id=ad.added_by AND " . $where_user . " 
+					  GROUP BY ad.added_by ORDER BY num_ads DESC  LIMIT " . $number_of_users;
 
-					$sql = "SELECT " . $fields . ", ad1.num_ads
-						FROM cb_user us1,(" . $sql_ad_count . ") ad1
-						WHERE us1.id=ad1.ad_added_by";
+					$sql = "SELECT " . $fields . ", ad1.num_ads 
+					  FROM " . User::tableNameFromClassName('User') . " us1,(" . $sql_ad_count . ") ad1
+					  WHERE us1.id=ad1.ad_added_by";
 
-					//$order_by = " ORDER BY num_ads DESC ";
+					//$order_by = " ORDER BY num_ads DESC "; 
+					// already counted 
+					$append_counts = false;
 
 					break;
 				case 'latest_posted':
 					// latest users posted an ad by location
-					//$order_by = " ORDER BY ad.id DESC ";
-					$sql_user_exists = "SELECT 1 FROM cb_user us WHERE us.id=ad.added_by AND " . $where_user;
-					$sql_ad_distinct = "SELECT DESTINCT ad.added_by as ad_added_by,ad.id as ad_id
-						FROM cb_ad ad
-						WHERE " . implode(' AND ', $whereA) . " AND EXISTS (" . $sql_ad_distinct . ")
-						ORDER BY ad.id DESC LIMIT " . $number_of_users;
+					// get latest published ads distinct added_by value 
+					// count is faster than distinct when ordered by not count(num_ads) 
+					$sql_ad_count = "SELECT count(ad.added_by) as num_ads ,ad.added_by as ad_added_by
+					  FROM " . Ad::tableNameFromClassName('Ad') . " ad, " . User::tableNameFromClassName('User') . " us
+					  WHERE " . implode(' AND ', $whereA) . " AND us.id=ad.added_by AND " . $where_user . " 
+					  GROUP BY ad.added_by ORDER BY ad.published_at DESC  LIMIT " . $number_of_users;
+					/* $sql_ad_count = "SELECT DISTINCT ad.added_by as ad_added_by "
+					  . "FROM " . Ad::tableNameFromClassName('Ad') . " ad "
+					  . "WHERE " . implode(' AND ', $whereA) . " AND EXISTS (" . $sql_user_exists . ") "
+					  . "ORDER BY ad.published_at DESC LIMIT " . $number_of_users; */
 
-					$sql = "SELECT " . $fields . "
-						FROM cb_user us1,(" . $sql_ad_count . ") ad1
-						WHERE us1.id=ad1.ad_added_by
-						ORDER BY ad1.ad_id DESC";
+					$sql = "SELECT " . $fields . ", ad1.num_ads 
+					  FROM " . User::tableNameFromClassName('User') . " us1,(" . $sql_ad_count . ") ad1
+					  WHERE us1.id=ad1.ad_added_by";
+
+					// already counted 
+					$append_counts = false;
+
 					break;
 				case 'latest':
 				default:
-					// latest users by location 
-					//$order_by = " ORDER BY us.id DESC ";
-					$sql_ad_exists = "SELECT 1
-						FROM cb_ad ad
-						WHERE ad.added_by=us.id AND " . implode(' AND ', $whereA);
-					$sql = "SELECT " . $fields . "
-						FROM cb_user us 
-						WHERE " . $where_user . " AND EXISTS (" . $sql_ad_exists . ")
-						ORDER BY us.id DESC LIMIT " . $number_of_users;
+					// latest registered users by location with published ads
+					// get latest published ads distinct added_by value 
+					// count is faster than distinct when grouped and ordered by added_by
+					$sql_ad_count = "SELECT count(ad.added_by) as num_ads ,ad.added_by as ad_added_by
+					  FROM " . Ad::tableNameFromClassName('Ad') . " ad, " . User::tableNameFromClassName('User') . " us
+					  WHERE " . implode(' AND ', $whereA) . " AND us.id=ad.added_by AND " . $where_user . " 
+					  GROUP BY ad.added_by ORDER BY ad.added_by DESC  LIMIT " . $number_of_users;
 
+					/* $sql_ad_count = "SELECT DISTINCT ad.added_by as ad_added_by "
+					  . "FROM " . Ad::tableNameFromClassName('Ad') . " ad "
+					  . "WHERE " . implode(' AND ', $whereA) . " AND EXISTS (" . $sql_user_exists . ") "
+					  . "ORDER BY ad.added_by DESC LIMIT " . $number_of_users; */
+					$sql = "SELECT " . $fields . ", ad1.num_ads 
+					  FROM " . User::tableNameFromClassName('User') . " us1,(" . $sql_ad_count . ") ad1
+					  WHERE us1.id=ad1.ad_added_by";
+
+					// already counted 
+					$append_counts = false;
 					break;
 			}
 
@@ -3514,10 +3545,42 @@ class Widget extends Record
 			  WHERE us1.id=ad1.added_by; */
 
 
-			$users = User::query($sql, $whereB);
+			if ($sql)
+			{
+				$users = User::query($sql, $whereB);
 
-			// remove passwords in case it is stored in object 
-			$users = User::cleanUserData($users);
+				// append ad counts for each user if needed
+				if ($append_counts && $users)
+				{
+					// not counted so regenerate count array
+					$arr_user_ad_count = array();
+					foreach ($users as $u)
+					{
+						$arr_user_ad_count[$u->id] = 0;
+					}
+					$arr_user_id_ = Ad::quoteArray(array_keys($arr_user_ad_count));
+
+					$sql_count = "SELECT added_by, count(added_by) num_ads "
+							. "FROM " . Ad::tableNameFromClassName('Ad') . " "
+							. "WHERE listed=? AND added_by IN (" . implode(',', $arr_user_id_) . ") "
+							. "GROUP BY added_by";
+					$counts = Ad::query($sql_count, array(1));
+					foreach ($counts as $c)
+					{
+						$arr_user_ad_count[$c->added_by] = $c->num_ads;
+					}
+
+					// append counted values 
+					foreach ($users as $u)
+					{
+						$u->num_ads = isset($arr_user_ad_count[$u->id]) ? $arr_user_ad_count[$u->id] : 0;
+					}
+				}
+
+				// remove passwords in case it is stored in object 
+				$users = User::cleanUserData($users);
+			}
+
 
 			// cache results 
 			SimpleCache::set($cache_key, $users);
@@ -3582,12 +3645,12 @@ class Widget extends Record
 									. ($_img_thumb ? ' class="lazy" data-src="' . $_img_thumb . '"' : '')
 									. ' alt="' . $_img_title . '" '
 									. ' width="' . $thumb_width . '"'
-									. ' height="' . $thumb_height . '" />';
+									. ' height="' . $thumb_height . '" loading="lazy" />';
 
 							$return .= '<a href="' . User::url($user) . '" title="' . $_img_title . '" style="width:' . $thumb_width . 'px;">'
 									. $thumb
 									. '<span class="title">' . $_img_title . '</span>'
-									. ($display_ad_count ? '<span class="item_count">' . number_format($user->num_ads) . '</span>' : '')
+									. (($display_ad_count && $user->num_ads) ? '<span class="item_count">' . number_format($user->num_ads) . '</span>' : '')
 									. '</a> ';
 						}
 						$return .= '</div>';
@@ -3607,7 +3670,7 @@ class Widget extends Record
 						foreach ($users as $user)
 						{
 							$return .= '<li><a href="' . User::url($user) . '">' . View::escape($user->name) . '</a>'
-									. ($display_ad_count ? '<span class="item_count">' . number_format($user->num_ads) . '</span>' : '')
+									. (($display_ad_count && $user->num_ads) ? '<span class="item_count">' . number_format($user->num_ads) . '</span>' : '')
 									. '</li>';
 						}
 						$return .= '</ul>';
@@ -3618,7 +3681,11 @@ class Widget extends Record
 			$widget->User = $users;
 		}
 
-		return self::_applyWidgetFormat($widget, $return, $suggested_title);
+		$return = self::_applyWidgetFormat($widget, $return, $suggested_title);
+
+		Benchmark::cp('widgetUsers(' . $widget->id . '):END');
+
+		return $return;
 	}
 
 	/**

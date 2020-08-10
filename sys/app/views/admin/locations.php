@@ -68,6 +68,9 @@ if ($locations)
 		?>
 	</table>
 	<?php
+	
+	echo $paginator;
+	
 }
 else
 {

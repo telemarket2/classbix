@@ -12,14 +12,14 @@
 				. ($_img_thumb ? ' class="lazy" data-src="' . $_img_thumb . '"' : '')
 				. ' alt="' . $_img_title . '" '
 				. ' width="' . $thumb_width . '"'
-				. ' height="' . $thumb_height . '" />';
+				. ' height="' . $thumb_height . '" loading="lazy" />';
 
 
 		echo '<li class="thumb_item">'
 		. '<a href="' . User::url($user) . '" title="' . $_img_title . '" style="width:' . $thumb_width . 'px;" class="thumb_link">'
 		. $thumb
 		. '<span class="title">' . $_img_title . '</span>'
-		. ($display_ad_count ? '<span class="item_count">' . number_format($user->num_ads) . '</span>' : '')
+		. (($display_ad_count && $user->num_ads) ? '<span class="item_count">' . number_format($user->num_ads) . '</span>' : '')
 		. '</a>'
 		. '</li>';
 	}

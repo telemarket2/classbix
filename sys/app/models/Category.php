@@ -28,9 +28,10 @@ class Category extends Record
 	const STATUS_ENABLED_NOTLOCKED = 'enabled_notlocked';
 	const STATUS_ALL = 'all';
 
-	static private $arr_tree = array();
+	static private $arr_tree;
 	static private $arr_tree_reverse = array();
 	static private $arr_cats_by_name = array();
+	static private $bulk_insert = false;
 	static private $obj_all;
 	static private $cols = array(
 		'id'		 => 1,
@@ -70,6 +71,13 @@ class Category extends Record
 		if ($this->parent_id > 0)
 		{
 			$this->parent_id = self::checkPossibleParent($this->id, $this->parent_id);
+		}
+
+		// set other defaults if not set
+		if (!isset($this->enabled))
+		{
+			$this->enabled = 1;
+			$this->locked = 0;
 		}
 
 		$this->added_at = REQUEST_TIME;
@@ -112,19 +120,54 @@ class Category extends Record
 		// check parent if this is only child and parent is not locked lock it
 		if ($this->parent_id)
 		{
-			$count_parent = Category::countFrom('Category', 'parent_id=?', array($this->parent_id));
+
+			// use tree when possible
+			if (isset(self::$arr_tree[self::STATUS_ALL][$this->parent_id]))
+			{
+				$count_parent = count(self::$arr_tree[self::STATUS_ALL][$this->parent_id]);
+			}
+			else
+			{
+				$count_parent = Category::countFrom('Category', 'parent_id=?', array($this->parent_id));
+			}
+
+			// lock only when detected first child of parent 
+			// to prevent locking continusly and changing manually not locked categories 
 			if ($count_parent == 1)
 			{
-				// lock parent category automaticly 
-				Category::update('Category', array('locked' => 1), 'id=?', array($this->parent_id));
+				$locked = false;
+				if (isset(self::$arr_tree_reverse[self::STATUS_ALL][$this->parent_id]) && self::$arr_tree_reverse[self::STATUS_ALL][$this->parent_id]->locked != 1)
+				{
+					if (self::$arr_tree_reverse[self::STATUS_ALL][$this->parent_id]->locked != 1)
+					{
+						// lock in memory
+						self::$arr_tree_reverse[self::STATUS_ALL][$this->parent_id]->locked = 1;
+					}
+					else
+					{
+						$locked = false;
+					}
+				}
+
+				if (!$locked)
+				{
+					// lock parent category automaticly 
+					Category::update('Category', array('locked' => 1), 'id=?', array($this->parent_id));
+				}
 			}
 		}
 
 		$return = $this->updateDescription();
 
-		self::_clearCache();
 
-		AdCategoryCount::autoDisbaleAdCount();
+		// on bulk insert disable these. 
+		// they should be called at the end of bulk insert
+		if (!self::$bulk_insert)
+		{
+			self::_clearCache();
+			AdCategoryCount::autoDisbaleAdCount();
+		}
+
 
 		return $return;
 	}
@@ -149,7 +192,7 @@ class Category extends Record
 
 	function afterDelete()
 	{
-		self::_clearCache();		
+		self::_clearCache();
 
 		return true;
 	}
@@ -157,14 +200,12 @@ class Category extends Record
 	function beforeDelete()
 	{
 		// delete subcategories
-		// get all subcategories
-		$categories_tree = self::getAllCategoryNamesTree();
-		if (isset($categories_tree[$this->id]))
+		// get all subcategories. 
+		// Use DB query, do not use cahce because in cache cleaned stdCasls object instead of categories calss
+		$sub = Category::findAllFrom('Category', 'parent_id=?', array($this->id));
+		foreach ($sub as $c)
 		{
-			foreach ($categories_tree[$this->id] as $c)
-			{
-				$c->delete('id');
-			}
+			$c->delete('id');
 		}
 
 		// delete descriptions
@@ -402,7 +443,7 @@ class Category extends Record
 	 */
 	public static function getAllCategoryNamesTree($status = 'all', $reverse = false)
 	{
-		if (!self::$arr_tree)
+		if (!isset(self::$arr_tree))
 		{
 			// create empty values if no categories found
 			self::$arr_tree = array();
@@ -426,24 +467,11 @@ class Category extends Record
 				SimpleCache::set($cache_key, $categories, 86400); //24 hours
 			}
 
-
 			foreach ($categories as $c)
 			{
-				self::$arr_tree[self::STATUS_ALL][$c->parent_id][] = $c;
-				self::$arr_tree_reverse[self::STATUS_ALL][$c->id] = $c;
-
-				if ($c->enabled)
-				{
-					self::$arr_tree[self::STATUS_ENABLED][$c->parent_id][] = $c;
-					self::$arr_tree_reverse[self::STATUS_ENABLED][$c->id] = $c;
-
-					if ($c->locked == 0)
-					{
-						self::$arr_tree[self::STATUS_ENABLED_NOTLOCKED][$c->parent_id][] = $c;
-						self::$arr_tree_reverse[self::STATUS_ENABLED_NOTLOCKED][$c->id] = $c;
-					}
-				}
+				self::getAllCategoryNamesTreeUpdate($c);
 			}
+			unset($categories);
 		}
 
 
@@ -451,7 +479,101 @@ class Category extends Record
 		{
 			return self::$arr_tree_reverse[$status];
 		}
+
 		return self::$arr_tree[$status];
+	}
+
+	/**
+	 * Add category to memory. 
+	 * Added when read from database or cache
+	 * Added when added new category in batch insert
+	 * 
+	 * @param stdClass $record is stdClass:if from cache, category if from DB or New category
+	 */
+	private static function getAllCategoryNamesTreeUpdate($record)
+	{
+		// add only if record id >0
+		if ($record->id > 0)
+		{
+			// tree not loaded
+			if (!isset(self::$arr_tree))
+			{
+				// load tree first 
+				self::getAllCategoryNamesTree();
+			}
+
+			if (!isset(self::$arr_tree[self::STATUS_ALL][$record->parent_id]))
+			{
+				self::$arr_tree[self::STATUS_ALL][$record->parent_id] = array();
+			}
+
+			self::$arr_tree[self::STATUS_ALL][$record->parent_id][] = $record;
+			self::$arr_tree_reverse[self::STATUS_ALL][$record->id] = $record;
+
+			if ($record->enabled)
+			{
+				if (!isset(self::$arr_tree[self::STATUS_ENABLED][$record->parent_id]))
+				{
+					self::$arr_tree[self::STATUS_ENABLED][$record->parent_id] = array();
+				}
+				self::$arr_tree[self::STATUS_ENABLED][$record->parent_id][] = $record;
+				self::$arr_tree_reverse[self::STATUS_ENABLED][$record->id] = $record;
+
+				if ($record->locked == 0)
+				{
+					if (!isset(self::$arr_tree[self::STATUS_ENABLED_NOTLOCKED][$record->parent_id]))
+					{
+						self::$arr_tree[self::STATUS_ENABLED_NOTLOCKED][$record->parent_id] = array();
+					}
+					self::$arr_tree[self::STATUS_ENABLED_NOTLOCKED][$record->parent_id][] = $record;
+					self::$arr_tree_reverse[self::STATUS_ENABLED_NOTLOCKED][$record->id] = $record;
+				}
+			}
+		}
+	}
+
+	/**
+	 * Check if some pain parent are not linked to root and not visible in script.
+	 * This happen if delete or bulk insert operation not finished and halted by error 
+	 * 
+	 */
+	static public function checkNotFoundParents()
+	{
+		// check if we have records with non existing parent_record then create undefined parent in disabled mode and add them there 
+		// generate tree
+		Category::getAllCategoryNamesTree();
+
+		$arr_no_parent = array();
+		foreach (self::$arr_tree_reverse[self::STATUS_ALL] as $record)
+		{
+			// parent not 0 and not found then add to $arr_no_parent
+			if ($record->parent_id != 0 && !isset(self::$arr_tree_reverse[self::STATUS_ALL][$record->parent_id]))
+			{
+				$arr_no_parent[$record->parent_id] = true;
+			}
+		}
+
+		if ($arr_no_parent)
+		{
+			// check make undefined parent location and make sure it is disabled 
+			$undefined = Category::checkMakeByName('undefined');
+
+			// make sure it is disabled 
+			if ($undefined->enabled || !isset($undefined->enabled))
+			{
+				// enabled 
+				$undefined->enabled = 0;
+				Category::update('Category', array('enabled' => 0), 'id=?', array($undefined->id));
+			}
+
+			$arr_no_parent_ = Record::quoteArray(array_keys($arr_no_parent));
+
+			// move all records with no parent to $undefined 
+			Category::update('Category', array('parent_id' => $undefined->id), 'parent_id IN (' . implode(',', $arr_no_parent_) . ')', array());
+
+			// clear cache 
+			Category::_clearCache();
+		}
 	}
 
 	public static function appendName($categories)
@@ -492,6 +614,47 @@ class Category extends Record
 		}
 
 		return $tree;
+	}
+
+	/**
+	 * generate category tree for info only, used in admin only
+	 * Used when deleting category with sub.
+	 * If category has too many sub (1000+) then delete page will load very slow. 
+	 * Show only 100 first degree subs, 10 from other degrees. 
+	 * Add (+54 more) for truncated values 
+	 * 
+	 * @param array $categories
+	 * @param int $parent_id
+	 * @return string
+	 */
+	public static function htmlCategoryTreeTruncated($categories, $parent_id = 0)
+	{
+		// scan given locations array and reduce subs
+		$categories_truncated = array();
+		$tolerate = 5;
+
+		foreach ($categories as $key => $arr)
+		{
+			if ($key == $parent_id)
+			{
+				$num = 100;
+			}
+			else
+			{
+				$num = 10;
+			}
+			$cnt = count($arr);
+			if ($cnt > $num + $tolerate)
+			{
+				// truncate it and update last item with more text 
+				$arr = array_slice($arr, 0, $num);
+				$last = end($arr);
+				$last->CategoryDescription->name .= ' (' . __('{num} more', array('{num}' => '+' . ($cnt - $num))) . ')';
+			}
+			$categories_truncated[$key] = $arr;
+		}
+
+		return Category::htmlCategoryTree($categories_truncated, $parent_id);
 	}
 
 	private static function _selectBoxLvl(& $arr, $parent_id = 0, $level = 0, $max_level = 0)
@@ -721,13 +884,53 @@ class Category extends Record
 		// save description if set
 		if ($this->CategoryDescription)
 		{
+
+			// optimize to insert in one query 
+			/*
+			  INSERT INTO cb_location_description (location_id, language_id, name, description)
+			  VALUES
+			  ('916', 'en', 'cat1.26', ''),
+			  ('916', 'ru', 'cat1.26', ''),
+			  ('916', 'tr', 'cat1.26', '')
+			  ON DUPLICATE KEY UPDATE
+			  name = VALUES(name),
+			  description = VALUES(description)
+			  ;
+
+			 */
+
+
+			$arr_where = array();
+			$values = array();
+
 			foreach ($this->CategoryDescription as $cd)
 			{
+				// fix name and description 
+				CategoryDescription::fixNameDescription($cd);
 				$cd->category_id = $this->id;
+
+				$arr_where[] = "(?, ?, ?, ?)";
+				// location_id
+				$values[] = $cd->category_id;
+				// language_id
+				$values[] = $cd->language_id;
+				$values[] = $cd->name;
+				$values[] = $cd->description;
+
+
 				// delete description first
-				CategoryDescription::deleteWhere('CategoryDescription', 'category_id=? AND language_id=?', array($cd->category_id, $cd->language_id));
-				$cd->save('new_id');
+				// LocationDescription::deleteWhere('LocationDescription', 'location_id=? AND language_id=?', array($cd->location_id, $cd->language_id));
+				// $cd->save('new_id');
 			}
+
+			// set new values 
+			$sql = "INSERT INTO " . CategoryDescription::tableNameFromClassName('CategoryDescription') . " 
+						(category_id, language_id, name, description)
+					VALUES " . implode(', ', $arr_where) . "  
+					ON DUPLICATE KEY UPDATE
+						name = VALUES(name),
+						description = VALUES(description)";
+			CategoryDescription::query($sql, $values);
 		}
 
 		return true;
@@ -832,7 +1035,18 @@ class Category extends Record
 
 	public static function getLastPosition($parent_id = 0)
 	{
-		$last = self::findOneFrom('Category', 'parent_id=? ORDER BY pos DESC', array(intval($parent_id)));
+		$parent_id = intval($parent_id);
+
+		// check if location tree loaded use it
+		if (isset(self::$arr_tree[self::STATUS_ALL][$parent_id]))
+		{
+			$last = end(self::$arr_tree[self::STATUS_ALL][$parent_id]);
+		}
+		else
+		{
+			$last = self::findOneFrom('Category', 'parent_id=? ORDER BY pos DESC', array($parent_id));
+		}
+
 
 		return intval($last->pos);
 	}
@@ -1009,9 +1223,20 @@ class Category extends Record
 		return false;
 	}
 
+	/**
+	 * 
+	 * Import items from given string 
+	 * Separator new line and |
+	 * Break inserting if execution time is more than max_time, return 'string_left'=>$str_left
+	 * 
+	 * @param string $str
+	 * @return array
+	 */
 	public static function importString($str)
 	{
 
+		$return = array();
+		
 		/** $str :
 		 * Category1
 		  Category1|Sub1
@@ -1020,40 +1245,75 @@ class Category extends Record
 		  Category2
 		  ...
 		 */
+		// set as bulk insert to prevent location cache clearing
+		// clear first and last 
+		self::_clearCache();
+		self::$bulk_insert = true;
+
+		// run for 10 s. if no tfinished then import ni batches of 10 seconds 
+		$max_run_time = 10;
+
 		$lines = explode("\n", $str);
-		$table = array();
+		
 		$count = 0;
-		foreach ($lines as $line)
+		foreach ($lines as $key => $line)
 		{
 			$line = trim($line);
 			if (!strlen($line))
 			{
+				// empty line
 				continue;
 			}
-			$table[] = explode("|", $line);
-		}
 
-		if ($table)
-		{
-			foreach ($table as $category_path)
+			$category_path = explode("|", $line);
+
+			// insert category if not exists 
+			$category = self::checkMakeByName($category_path);
+			if ($category)
 			{
-				// search if this record exists in db 
-				// $category_path is array('category','sub','subsub',...);
-				$category = self::checkMakeByName($category_path);
-				if ($category)
+				$count++;
+			}
+
+			if (Benchmark::totalTime() > $max_run_time)
+			{
+				// return left lines 
+				$lines = array_slice($lines, $key);
+				if (count($lines) > 1)
 				{
-					$count++;
+					$return['string_left'] = implode("\n", $lines);
 				}
+				// break here 
+				break;
 			}
 		}
+		unset($lines);
 
-		return $count;
+		// clear cache after bulk insert as well 
+		self::$bulk_insert = false;
+		self::_clearCache();
+
+		// perform other skipped actions because of bulk upload
+		AdCategoryCount::autoDisbaleAdCount();
+
+		$return['count'] = $count;
+
+		return $return;
 	}
 
 	public static function nextAutoId()
 	{
-		$latest_cat = Category::findOneFrom('Category', '1=1 ORDER BY id desc', array(), MAIN_DB, 'id');
-		return $latest_cat->id + 1;
+		// use tree when possible 
+		if (isset(self::$arr_tree_reverse[self::STATUS_ALL]) && count(self::$arr_tree_reverse[self::STATUS_ALL]))
+		{
+			$max = max(array_keys(self::$arr_tree_reverse[self::STATUS_ALL]));
+		}
+		else
+		{
+			$latest_cat = Category::findOneFrom('Category', '1=1 ORDER BY id desc', array(), MAIN_DB, 'id');
+			$max = $latest_cat->id;
+		}
+
+		return $max + 1;
 	}
 
 	/**
@@ -1100,6 +1360,18 @@ class Category extends Record
 						$category->CategoryDescription[$lng->id] = $cd;
 					}
 					$category->save();
+
+
+					// location saved add to memory location with current lng name
+					// set same variables used in self::appendName($locations) -> location_id,language_id,name
+					// $ld_arr = $location->LocationDescription;
+					$category->CategoryDescription = new CategoryDescription();
+					$category->CategoryDescription->location_id = $category->id;
+					$category->CategoryDescription->language_id = I18n::getLocale();
+					$category->CategoryDescription->name = $name;
+					self::getAllCategoryNamesTreeUpdate($category);
+
+					// increase added record count 
 					$count++;
 				}
 				self::$arr_cats_by_name[$parent_id][$name] = $category;
@@ -1229,10 +1501,27 @@ class Category extends Record
 	 */
 	private static function _clearCache()
 	{
+		// prevent clearing if it is bulk insert 
+		if (self::$bulk_insert)
+		{
+			return false;
+		}
+
 		// delete category cache
 		SimpleCache::delete('categories');
-		// invalidate json cache 
-		Config::optionSet('json_version', REQUEST_TIME);
+
+		// clear local location trees 
+		self::$arr_tree = null;
+		self::$arr_tree_reverse = array();
+
+		// update json version to request updated location data
+		$json_version = Config::option('json_version');
+		if ($json_version != REQUEST_TIME)
+		{
+			Config::optionSet('json_version', REQUEST_TIME);
+		}
+
+		return true;
 	}
 
 }

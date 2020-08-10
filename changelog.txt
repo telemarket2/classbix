@@ -56,6 +56,19 @@ TODO:
 	- widgets load over ajax to save processing and load over internet
 
 
+
+Version: 2.0.7(2020.08.07) 
+	+ Fixed caching estimate counts for custom fields in category widget 
+	+ Fixed in users widget: users with logo, latest posted, with ad count. (21.05.2020)
+	+ Updated cache to return false instead of null when serialized data does't fit into database field
+	+ Fixed minor bug related to PHP variable type conflicts.
+	+ Fixed not opening add new ip block form bug.
+	+ Fixed location/category deletion with sub items.
+	+ Bulk insert locations/categories use jquery if executed for more than 10 seconds then continue inserting in batches.
+	+ Paginate sub items in location and categories if there are more than 300 items 
+	+ Show only top 100 sub items when deleting location/category. 	
+	+ Fixed modal sticky tooter, switched to CSS sticky
+	
 Version: 2.0.6(2020.04.29) 
 	+ Fixed language problem on login page
 Version: 2.0.5(2020.04.29) 
@@ -415,7 +428,7 @@ Update Release checklist:
 -+ do translations for russian and turkish language
 -+ if themes updated then change css, js links add date if updated
 -+ add version log to theme, change info.php version numbers
-- zip and upload files to server, (remove files: .htaccess, config.php, user-content/uploads/*, user-content/themes/[-base]*, /nbproject)
+-> zip and upload files to server, (remove files: .htaccess, config.php, user-content/uploads/*, user-content/themes/[-base]*, /nbproject)
 - update demo
 - add change log to website and themes if required
 - update file download links to new version 

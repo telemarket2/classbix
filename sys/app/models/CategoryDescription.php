@@ -40,18 +40,23 @@ class CategoryDescription extends Record
 
 	function beforeInsert()
 	{
-		// trim name 
-		$this->name = TextTransform::removeSpacesNewlines($this->name);
-		if (!strlen($this->name))
+		self::fixNameDescription($this);
+
+		return true;
+	}
+
+	static public function fixNameDescription($record)
+	{
+		$record->name = TextTransform::removeSpacesNewlines($record->name);
+		if (!strlen($record->name))
 		{
-			$this->name = __('no name');
+			$record->name = __('no name');
 		}
 
-		if (!strlen($this->description))
+		if (!strlen($record->description))
 		{
-			$this->description = '';
+			$record->description = '';
 		}
-		return true;
 	}
 
 }

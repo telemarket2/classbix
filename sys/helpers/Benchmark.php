@@ -142,7 +142,7 @@ class Benchmark
 			$start_time = FRAMEWORK_STARTING_MICROTIME;
 		}
 
-		return $start_time - $t;
+		return abs($t - $start_time);
 	}
 
 }

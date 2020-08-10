@@ -1089,16 +1089,16 @@ var cb = {
 				console.log(options.data.cf[cf_key]);
 				for (x in options.data.cf[cf_key])
 				{
-					if(typeof options.data.af[x] === 'undefined')
+					if (typeof options.data.af[x] === 'undefined')
 					{
 						// no af field found, then skip this record.
 						// used if cat-loc par has removed all custom fields defined by parent cat-loc pait selection.
 						// for example price can be set globally and removed from specific category.
 						continue;
 					}
-					
+
 					id = x.replace('i', '');
-					
+
 					af = options.data.af[x];
 					af_name = 'cf[' + id + ']';
 					if (typeof options.id_prefix === 'undefined')
@@ -2068,6 +2068,7 @@ var cb = {
 							if ($me.data('processing') != '1')
 							{
 								$me.data('processing', '1');
+								$me.append(' <span class="loading">...</span>');
 								$.post(BASE_URL + url, {nounce: nounce})
 										.done(function (data)
 										{
@@ -2081,6 +2082,7 @@ var cb = {
 												if (data.continue == '1')
 												{
 													$me.removeData('processing');
+													$me.find('.loading').remove();
 													cb_batch();
 												}
 											}
@@ -2088,12 +2090,14 @@ var cb = {
 											{
 												alert(data);
 												$me.removeData('processing');
+												$me.find('.loading').remove();
 											}
 										})
 										.fail(function ()
 										{
 											alert('Failed, please try again.');
 											$me.removeData('processing');
+											$me.find('.loading').remove();
 										});
 
 
@@ -2570,7 +2574,7 @@ var cb = {
 			if ($actions_buttons.length)
 			{
 				options.footer = true;
-				options.stickyFooter = true;
+				options.stickyFooter = false;
 				$actions_buttons.hide();
 			}
 

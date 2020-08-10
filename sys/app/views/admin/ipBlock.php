@@ -104,47 +104,45 @@ if ($ipblocks)
 	echo '</table>';
 
 	echo $paginator;
-	?>
-	<script>
-		$(function ()
-		{
-			$('.delete').click(deleteIpBlock);
-			$('.add_new').hide().removeClass('display-none');
-			$('.add_new_button,.add_new_cancel').click(function ()
-			{
-				$('.add_new').slideToggle();
-				return false;
-			});
-		});
-
-		function deleteIpBlock()
-		{
-			var $me = $(this);
-			var id = $me.attr('r_id');
-			var $tr = $me.parents('tr:first');
-
-			if (confirm('<?php echo __('Do you wnat to delete this record?'); ?>'))
-			{
-				$.post(BASE_URL + 'admin/ipBlockDelete/', {id: id}, function (data)
-				{
-					if (data == 'ok')
-					{
-						$tr.remove();
-					}
-					else
-					{
-						alert('Error: ' + data);
-					}
-				});
-			}
-			return false;
-		}
-	</script>
-
-	<?php
 }
 else
 {
 	echo '<div class="empty"><p aria-hidden="true"><i class="fa fa-ban fa-5x" aria-hidden="true"></i></p>'
 	. '<p class="h3">' . __('No records found.') . '</p></div>';
 }
+?>
+<script>
+	$(function ()
+	{
+		$('.delete').click(deleteIpBlock);
+		$('.add_new').hide().removeClass('display-none');
+		$('.add_new_button,.add_new_cancel').click(function ()
+		{
+			$('.add_new').slideToggle();
+			return false;
+		});
+	});
+
+	function deleteIpBlock()
+	{
+		var $me = $(this);
+		var id = $me.attr('r_id');
+		var $tr = $me.parents('tr:first');
+
+		if (confirm('<?php echo __('Do you wnat to delete this record?'); ?>'))
+		{
+			$.post(BASE_URL + 'admin/ipBlockDelete/', {id: id}, function (data)
+			{
+				if (data == 'ok')
+				{
+					$tr.remove();
+				}
+				else
+				{
+					alert('Error: ' + data);
+				}
+			});
+		}
+		return false;
+	}
+</script>

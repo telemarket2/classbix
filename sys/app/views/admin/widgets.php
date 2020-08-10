@@ -600,7 +600,12 @@ $tabs .= '<a href="#' . $key . '" data-hide="box" data-show="' . $key . '">' . _
 					alert('Couldn\'t update widget. Please try again. ' + data);
 					$submit.removeAttr('disabled');
 				}
-			});
+			})
+					.fail(function ()
+					{
+						alert('Couldn\'t update widget. Please try again. ');
+						$submit.removeAttr('disabled');
+					});
 
 			return false;
 

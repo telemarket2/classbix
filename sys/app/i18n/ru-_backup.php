@@ -1271,5 +1271,11 @@
 'You have posted {num} items in {time}. {time_left} till you can post new item again.'=>'Вы разместили {num} объявлений за {time}. {time_left} пока вы сможете снова разместить новые объявления.',
 'Clear all cache'=>'Очистить вeсь кэш',
 'Clear data cache'=>'Очистить кэш данных',
-'Clear image cache'=>'Очистить кэш изображений'
+'Clear image cache'=>'Очистить кэш изображений',
+'Ignore'=>'Игнорировать',
+'Import {num} categories'=>'Добавить {num} категорий',
+'Import {num} locations'=>'Добавить {num} местоположений',
+'Importing ({num} records left)'=>'Добавляется (остались записи {num})',
+'Items not completed from previous import. {button}'=>'Записи не завершенные от предыдущего импорта. {button}',
+'{num} more'=>'{num} ещё'
 );

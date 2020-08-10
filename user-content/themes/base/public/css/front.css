@@ -205,6 +205,7 @@ ul.list_style_full{ list-style:none;margin:0;padding:0;}
 .thumb_link:hover{text-decoration:none;}
 .thumb_link:hover img{filter:contrast(120%);}
 .thumb_link img{display:block; width:100%; height:auto; border-radius:5px;}
+.thumbs a{max-width: 100%;}
 .thumbs .title{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:100%;text-align:center;}
 .thumbs .price,
 .thumbs .item_count,
@@ -219,6 +220,7 @@ ul.list_style_full{ list-style:none;margin:0;padding:0;}
 .narrow .thumb_style_grid .thumb_item{width: 50%;}
 .thumb_style_grid .thumb_link,
 .thumb_style_onecolumn .thumb_link{width: 100% !important;}
+
 /* gallery and carousel END */
 
 /* messages */
@@ -1434,7 +1436,7 @@ input[type=number]{-moz-appearance:textfield;/*firefox*/}
 .tingle-modal__close:hover{color:#fff}
 .tingle-modal-box{position:relative;-ms-flex-negative:0;flex-shrink:0;margin-top:auto;margin-bottom:auto;width:90%;max-width:64rem;border-radius:4px;background:#fff;opacity:1;cursor:auto;will-change:transform,opacity}
 .tingle-modal-box__content{padding:2rem}
-.tingle-modal-box__footer{padding:1rem 2rem;width:auto;border-bottom-right-radius:4px;border-bottom-left-radius:4px;background-color:#f5f5f5;cursor:auto}
+.tingle-modal-box__footer{padding:1rem 2rem;width:auto;border-bottom-right-radius:4px;border-bottom-left-radius:4px;background-color:#f5f5f5;cursor:auto;position: sticky;}
 .tingle-modal-box__footer::after{display:table;clear:both;content:""}
 .tingle-modal-box__footer--sticky{position:fixed;bottom:-200px;z-index:10001;opacity:1;transition:bottom .3s ease-in-out .3s}
 .tingle-enabled{position:fixed;right:0;left:0;overflow:hidden}

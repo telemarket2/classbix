@@ -680,21 +680,29 @@ class Ad extends Record
 		// convert to fulltext index
 		AdFulltext::process($this);
 
-
-		// check if title adn description text chanegd
-		$is_changed = TextTransform::text_is_changed($this->title . ' ' . $this->description, $this->title_old . ' ' . $this->description_old);
-
-
-		if ($is_changed)
-		{
-			// send for moderation if required by settings
-			Ad::autoApproveChanged($this);
-		}
-
 		// clear cache 
 		SimpleCache::delete('ad');
 
 		return true;
+	}
+
+	/**
+	 * Check id text changed and update approved value or ad.
+	 * uses $ad->title_old , $ad->description_old
+	 * 
+	 * @param Ad $ad
+	 */
+	static public function checkTextChange($ad)
+	{
+		if (isset($ad->title_old) || isset($ad->description_old))
+		{
+			$is_changed = TextTransform::text_is_changed($ad->title . ' ' . $ad->description, $ad->title_old . ' ' . $ad->description_old);
+			if ($is_changed)
+			{
+				// send for moderation if required by settings
+				Ad::autoApproveChanged($ad);
+			}
+		}
 	}
 
 	function afterDelete()
@@ -1170,16 +1178,35 @@ class Ad extends Record
 		return false;
 	}
 
-	public function verify($val = 1)
+	/**
+	 * Update given ad as verified 
+	 * 
+	 * @param Ad $ad
+	 * @param integer $val 1: verified by email, 0: verified by admin
+	 * @return boolean
+	 */
+	static public function verify($ad, $val = 1)
 	{
 		// 1: verified by email, 0: verified by admin
-		$this->verified = $val;
-		$this->listed = $this->isListedByValues() ? 1 : 0;
-		if ($this->listed)
+
+		$ad->verified = $val;
+		$ad->listed = $ad->isListedByValues() ? 1 : 0;
+
+
+		$arr_update = array(
+			'verified'	 => $ad->verified,
+			'listed'	 => $ad->listed
+		);
+
+		if ($ad->listed)
 		{
-			$this->published_at = REQUEST_TIME;
+			$ad->published_at = REQUEST_TIME;
+			$arr_update['published_at'] = $ad->published_at;
 		}
-		$return = $this->save();
+
+		// update db 
+		// use this instead updating all fields with $ad->save();
+		$return = Ad::update('Ad', $arr_update, 'id=?', array($ad->id));
 
 		// update listed ads
 		Ad::updateListed();
@@ -3129,16 +3156,23 @@ class Ad extends Record
 			'like',
 		);
 		// query to check 
-		$query_check = StringUtf8::strtolower($cq->query_featured);
+		$str_check = StringUtf8::strtolower($cq->query_featured);
+
+		// skip case if published_at>123 in query, so replace it with custom placeholder. 
+		// do not use $str_check for actual query
+		// this is to show all featured items for last 30,90 days
+		// because in last 1k results you may get only last 1-5 day data in general
+		$str_check = str_replace('published_at>', 'published_at=', $str_check);
 		foreach ($arr_complex as $check)
 		{
-			if (strpos($query_check, $check) !== false)
+			if (strpos($str_check, $check) !== false)
 			{
 				// query is not simple
 				$is_simple = false;
 				break;
 			}
 		}
+
 
 		// if $cq->result->ads_featured not initialized then we need to find featured ads for this query
 		if (!isset($cq->result->ads_featured) && !$is_simple)
@@ -3680,7 +3714,7 @@ class Ad extends Record
 	}
 
 	/**
-	 * Update listed ads every 24 hours. 
+	 * Update all listed ads every 24 hours. 
 	 * 
 	 * @param bool $force update imedaitely
 	 * @param array $ids 
@@ -5229,7 +5263,7 @@ class Ad extends Record
 						$return .= '<div class="med">'
 								. '<a href="' . Adpics::img($adpic) . '" rel="group' . $ad->id . '">'
 								. '<img src="' . $_img_placeholder_src . '" alt="' . $title . '" '
-								. 'data-src="' . $img_med . '" class="lazy" />'
+								. 'data-src="' . $img_med . '" class="lazy" loading="lazy" />'
 								. '</a>'
 								. '</div>';
 						$first = false;
@@ -5242,7 +5276,7 @@ class Ad extends Record
 					{
 						$thumbs .= '<a href="' . Adpics::img($adpic) . '" rel="group' . $ad->id . '">'
 								. '<img src="' . $_img_placeholder_src . '" alt="' . $title . '" '
-								. 'data-src="' . $img_th . '" class="lazy" />'
+								. 'data-src="' . $img_th . '" class="lazy" loading="lazy" />'
 								. '</a>';
 					}
 				}
@@ -5336,7 +5370,7 @@ class Ad extends Record
 					$img_med = Adpics::imgMed($adpic, $med_size, $ad->id);
 					if ($img_med)
 					{
-						$img = '<img src="' . $_img_placeholder_src . '" data-src="' . $img_med . '" alt="' . $title . '" class="lazy" />';
+						$img = '<img src="' . $_img_placeholder_src . '" data-src="' . $img_med . '" alt="' . $title . '" class="lazy" loading="lazy" />';
 					}
 				}
 				else
@@ -6434,20 +6468,22 @@ class Ad extends Record
 	 * check if ads should be moderated. then mark for moderation and save
 	 * called if words (not numbers) in text changed or new image added (not deleted old images). 
 	 * 
-	 * @param type $ad
+	 * @param Ad $ad
 	 */
 	static public function autoApproveChanged($ad)
 	{
 		$enabled = Ad::autoApprove($ad);
 		if ($enabled == Ad::STATUS_PENDING_APPROVAL && $ad->enabled == Ad::STATUS_ENABLED)
 		{
-			// ad should be sent to moderation 
-			Ad::update('Ad', array(
-				'enabled'	 => Ad::STATUS_PENDING_APPROVAL,
-				'listed'	 => 0
-					), 'id=?', array($ad->id));
 			$ad->enabled = Ad::STATUS_PENDING_APPROVAL;
 			$ad->listed = 0;
+
+			// update db 
+			// ad should be sent to moderation 
+			Ad::update('Ad', array(
+				'enabled'	 => $ad->enabled,
+				'listed'	 => $ad->listed
+					), 'id=?', array($ad->id));
 		}
 	}
 

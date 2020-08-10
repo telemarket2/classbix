@@ -57,13 +57,21 @@ class SimpleCache
 					$cache = Config::option(self::formattedKey($key));
 					if ($cache)
 					{
-						$data_pack = unserialize($cache);
-						$data = $data_pack->data;
-						$time = $data_pack->time;
-						if ($time < self::time())
+						$data_pack = @unserialize($cache);
+						if ($data_pack)
 						{
-							// delete old cache
-							Config::optionDelete(self::formattedKey($key));
+							// we have valid unserialized $data_pack 							
+							$data = $data_pack->data;
+							$time = $data_pack->time;
+							if ($time < self::time())
+							{
+								// delete old cache
+								Config::optionDelete(self::formattedKey($key));
+							}
+						}
+						else
+						{
+							Benchmark::cp('ERROR:SimpleCache::get(' . $key . '):strlen-' . strlen($cache) . ': unserialize not valid data from db. probably didnt fit into cinfig:value field');
 						}
 					}
 			}
@@ -108,6 +116,8 @@ class SimpleCache
 					$data_pack->data = $value;
 
 					Config::optionSet(self::formattedKey($key), self::_serialize($data_pack), false);
+
+					unset($data_pack);
 				}
 		}
 		Benchmark::cp('SimpleCache::set(' . $key . ')');
@@ -125,12 +135,37 @@ class SimpleCache
 	{
 		Benchmark::cp();
 
+		$count_deleted_from_memory = 0;
+
 		if (isset(self::$loaded[$key]))
 		{
 			unset(self::$loaded[$key]);
+			$count_deleted_from_memory++;
+		}
+
+		// delete all matching keys $key + % in DB so delete them as well 	
+		$arr_unset = array();
+		foreach (self::$loaded as $k => $v)
+		{
+			if (strpos($k, $key) === 0)
+			{
+				// found $key + % in $k so add it to array and delete after loop ends
+				$arr_unset[$k] = true;
+			}
+		}
+		foreach ($arr_unset as $unset_key => $v)
+		{
+			unset(self::$loaded[$unset_key]);
+		}
+
+		$count_deleted_from_memory += count($arr_unset);
+		if ($count_deleted_from_memory)
+		{
+			Benchmark::cp('SimpleCache::delete(' . $key . '):deleted from memory:' . $count_deleted_from_memory);
 		}
 
 
+		// delete from drive: DB or file 
 		switch (self::$drive)
 		{
 			case 'file':

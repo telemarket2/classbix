@@ -458,6 +458,16 @@ define(\'URL_PUBLIC\', URL_PROTOCOL . DOMAIN . \'/\');';
 				// ads_separate=0 default
 				Config::optionSet('ads_separate', '0', true, true);
 			}
+			
+			
+			// FUTURE NEW VESRION make sure val field in config fixed to mediumtext format. 
+			if (Config::isDBVersionLowerThan('2.0.7'))
+			{
+				$sql = "ALTER TABLE " . Config::tableNameFromClassName('Config') . "
+						CHANGE COLUMN `val` `val` MEDIUMTEXT NULL
+					";
+				Record::query($sql);
+			}
 
 
 			// clear cache
